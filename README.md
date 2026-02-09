@@ -116,7 +116,7 @@ Webhook URL 경로는 `/api/github/webhooks` 입니다.
 - `OPENAI_TIMEOUT_MS`: 선택 (기본 `15000`)
 - `GEMINI_API_KEY`: Gemini 사용 시 필수
 - `GEMINI_MODEL`: 선택 (기본 `gemini-2.0-flash`)
-- `GEMINI_TIMEOUT_MS`: 선택 (기본 `15000`)
+- `GEMINI_TIMEOUT_MS`: 선택 (기본 `30000`)
 - `GITHUB_HOST`: 선택 (GitHub Enterprise Server인 경우만)
 
 ## 실행 방법
@@ -155,7 +155,7 @@ sam deploy \
     AiProvider=gemini \
     GeminiApiKey=YOUR_GEMINI_API_KEY \
     GeminiModel=gemini-2.0-flash \
-    GeminiTimeoutMs=15000 \
+    GeminiTimeoutMs=30000 \
     GithubHost=
 ```
 

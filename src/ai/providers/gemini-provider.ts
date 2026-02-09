@@ -74,11 +74,71 @@ export class GeminiProvider implements AiProvider {
   private readonly apiKey: string;
   private readonly model: string;
   private readonly timeoutMs: number;
+  private readonly fallbackModel: string;
+  private readonly fallbackTimeoutMs: number;
+  private readonly maxPromptChars: number;
 
   constructor(apiKey: string, model: string) {
     this.apiKey = apiKey;
     this.model = model;
-    this.timeoutMs = Number(process.env.GEMINI_TIMEOUT_MS ?? "15000");
+    this.timeoutMs = Number(process.env.GEMINI_TIMEOUT_MS ?? "30000");
+    this.fallbackModel = process.env.GEMINI_FALLBACK_MODEL || "gemini-2.5-flash";
+    this.fallbackTimeoutMs = Number(process.env.GEMINI_FALLBACK_TIMEOUT_MS ?? "20000");
+    this.maxPromptChars = Number(process.env.GEMINI_MAX_PROMPT_CHARS ?? "20000");
+  }
+
+  private async request(model: string, prompt: string, timeoutMs: number): Promise<string | null> {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), Number.isFinite(timeoutMs) ? timeoutMs : 30000);
+
+    try {
+      const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(this.apiKey)}`;
+      const response = await fetch(endpoint, {
+        method: "POST",
+        headers: {
+          "content-type": "application/json"
+        },
+        body: JSON.stringify({
+          contents: [
+            {
+              parts: [{ text: prompt }]
+            }
+          ],
+          generationConfig: {
+            temperature: 0.2
+          }
+        }),
+        signal: controller.signal
+      });
+
+      if (!response.ok) {
+        const body = await response.text();
+        console.error("Gemini request failed", {
+          model,
+          timeoutMs,
+          status: response.status,
+          body: body.slice(0, 500)
+        });
+        return null;
+      }
+
+      const json = (await response.json()) as GeminiApiResponse;
+      const raw = extractTextFromGeminiResponse(json);
+      if (!raw) {
+        console.error("Gemini response was empty", { model });
+        return null;
+      }
+      return raw;
+    } catch (error) {
+      console.error("Gemini request failed", {
+        model,
+        timeoutMs,
+        message: error instanceof Error ? error.message : String(error)
+      });
+      return null;
+    } finally {
+      clearTimeout(timeout);
+    }
   }
 
   async generateReview(input: AiReviewInput): Promise<AiReviewResult | null> {
@@ -118,70 +178,30 @@ ${input.prBody}
 ${input.changedCodePrompt}
 `;
 
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), Number.isFinite(this.timeoutMs) ? this.timeoutMs : 15000);
+    const limitedPrompt =
+      prompt.length > this.maxPromptChars
+        ? `${prompt.slice(0, this.maxPromptChars)}\n\n[truncated: prompt too long]`
+        : prompt;
 
-    try {
-      const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(this.model)}:generateContent?key=${encodeURIComponent(this.apiKey)}`;
-      const response = await fetch(endpoint, {
-        method: "POST",
-        headers: {
-          "content-type": "application/json"
-        },
-        body: JSON.stringify({
-          contents: [
-            {
-              parts: [{ text: prompt }]
-            }
-          ],
-          generationConfig: {
-            temperature: 0.2
-          }
-        }),
-        signal: controller.signal
-      });
+    let raw = await this.request(this.model, limitedPrompt, this.timeoutMs);
+    if (!raw && this.fallbackModel && this.fallbackModel !== this.model) {
+      raw = await this.request(this.fallbackModel, limitedPrompt, this.fallbackTimeoutMs);
+    }
+    if (!raw) return null;
 
-      if (!response.ok) {
-        const body = await response.text();
-        console.error("Gemini request failed", {
-          model: this.model,
-          timeoutMs: this.timeoutMs,
-          status: response.status,
-          body: body.slice(0, 500)
-        });
-        return null;
-      }
-
-      const json = (await response.json()) as GeminiApiResponse;
-      const raw = extractTextFromGeminiResponse(json);
-      if (!raw) {
-        console.error("Gemini response was empty", { model: this.model });
-        return null;
-      }
-
-      const parsed = parseResponse(raw);
-      if (!parsed) {
-        console.error("Gemini response JSON parse failed", {
-          model: this.model,
-          preview: raw.slice(0, 300)
-        });
-        return null;
-      }
-
-      return {
-        summaryMarkdown: parsed.summary_markdown.trim(),
-        answerCode: parsed.answer_code.trim(),
-        inlineSuggestions: normalizeInline(parsed.inline_suggestions)
-      };
-    } catch (error) {
-      console.error("Gemini request failed", {
+    const parsed = parseResponse(raw);
+    if (!parsed) {
+      console.error("Gemini response JSON parse failed", {
         model: this.model,
-        timeoutMs: this.timeoutMs,
-        message: error instanceof Error ? error.message : String(error)
+        preview: raw.slice(0, 300)
       });
       return null;
-    } finally {
-      clearTimeout(timeout);
     }
+
+    return {
+      summaryMarkdown: parsed.summary_markdown.trim(),
+      answerCode: parsed.answer_code.trim(),
+      inlineSuggestions: normalizeInline(parsed.inline_suggestions)
+    };
   }
 }

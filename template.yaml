@@ -30,7 +30,7 @@ Parameters:
     Default: gemini-2.0-flash
   GeminiTimeoutMs:
     Type: String
-    Default: "15000"
+    Default: "30000"
   AiProvider:
     Type: String
     Default: gemini
