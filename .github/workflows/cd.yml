@@ -56,7 +56,9 @@ jobs:
         run: npm prune --omit=dev
 
       - name: Validate template
-        run: sam validate --template-file template.yaml
+        env:
+          SAM_CLI_TELEMETRY: 0
+        run: sam validate --template-file template.yaml --region "${AWS_REGION}"
 
       - name: Deploy Lambda
         run: |
@@ -66,6 +68,28 @@ jobs:
           PROVIDER="${AI_PROVIDER:-openai}"
           HOST="${GITHUB_HOST:-}"
 
+          PARAMS=(
+            "AppId=$APP_ID"
+            "PrivateKeyBase64=$PRIVATE_KEY_BASE64"
+            "WebhookSecret=$WEBHOOK_SECRET"
+          )
+
+          if [ -n "${OPENAI_API_KEY:-}" ]; then
+            PARAMS+=("OpenAiApiKey=$OPENAI_API_KEY")
+          fi
+
+          if [ -n "${MODEL:-}" ]; then
+            PARAMS+=("OpenAiModel=$MODEL")
+          fi
+
+          if [ -n "${PROVIDER:-}" ]; then
+            PARAMS+=("AiProvider=$PROVIDER")
+          fi
+
+          if [ -n "${HOST:-}" ]; then
+            PARAMS+=("GithubHost=$HOST")
+          fi
+
           sam deploy \
             --template-file template.yaml \
             --stack-name "$STACK" \
@@ -74,11 +98,4 @@ jobs:
             --no-confirm-changeset \
             --no-fail-on-empty-changeset \
             --resolve-s3 \
-            --parameter-overrides \
-              AppId="$APP_ID" \
-              PrivateKeyBase64="$PRIVATE_KEY_BASE64" \
-              WebhookSecret="$WEBHOOK_SECRET" \
-              OpenAiApiKey="$OPENAI_API_KEY" \
-              OpenAiModel="$MODEL" \
-              AiProvider="$PROVIDER" \
-              GithubHost="$HOST"
+            --parameter-overrides "${PARAMS[@]}"
