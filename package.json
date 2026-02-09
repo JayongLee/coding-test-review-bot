@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "@octokit/rest": "^22.0.0",
+    "@probot/adapter-aws-lambda-serverless": "^4.0.3",
     "cheerio": "^1.1.2",
     "openai": "^5.12.2",
     "probot": "^14.0.0"

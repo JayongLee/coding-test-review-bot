@@ -78,29 +78,73 @@ npm run dev
 - Fork PR 미지원
 - 인라인 코멘트는 변경된 라인(`+`)에만 작성
 
-## AWS EC2 배포 (자체 서버)
+## AWS Lambda 배포
 
-1. EC2에 Node.js LTS 설치
-2. 애플리케이션 배포 후 `.env` 설정
-3. `npm install && npm run build`
-4. `pm2` 또는 `systemd`로 프로세스 상시 실행
-5. GitHub App Webhook URL을 EC2 도메인/로드밸런서 주소로 연결
+Lambda 엔트리포인트는 `/Users/jayong/Programming/spring/coding-test-review/src/lambda.ts`이며,
+SAM 템플릿은 `/Users/jayong/Programming/spring/coding-test-review/template.yaml`입니다.
 
-## CI/CD (Docker + GitHub Actions)
+Webhook URL 경로는 `/api/github/webhooks` 입니다.
+
+## CI/CD (Lambda + GitHub Actions)
 
 - CI: `/Users/jayong/Programming/spring/coding-test-review/.github/workflows/ci.yml`
-  - npm build 검증
-  - Docker 이미지 빌드 검증
+  - TypeScript build
+  - SAM template validate
 - CD: `/Users/jayong/Programming/spring/coding-test-review/.github/workflows/cd.yml`
-  - GHCR에 이미지 push (`latest`, `sha`)
-  - EC2에서 image pull 후 container 재기동
+  - OIDC로 AWS AssumeRole
+  - SAM 배포
 
 필요 GitHub Secrets:
 
-- `SERVER_HOST`: EC2 공인 IP 또는 도메인
-- `SERVER_USER`: SSH 사용자 (예: `ubuntu`)
-- `SERVER_SSH_KEY`: 배포용 private key (PEM 전체)
-- `SERVER_PORT`: SSH 포트 (기본 22, 선택)
-- `GHCR_USERNAME`: GHCR pull 권한이 있는 계정
-- `GHCR_TOKEN`: GHCR pull 가능한 PAT (`read:packages`)
-- `APP_ENV_FILE_BASE64`: 서버 컨테이너용 `.env` 파일 전체를 base64 인코딩한 값
+- `AWS_ROLE_ARN`: GitHub OIDC가 Assume할 IAM Role ARN
+- `AWS_REGION`: 배포 리전 (예: `ap-northeast-2`)
+- `LAMBDA_STACK_NAME`: CloudFormation Stack 이름 (선택, 기본 `coding-test-review-app`)
+- `APP_ID`: GitHub App ID
+- `PRIVATE_KEY_BASE64`: GitHub App private key 전체를 base64 인코딩한 값
+- `WEBHOOK_SECRET`: GitHub App webhook secret
+- `OPENAI_API_KEY`: OpenAI API Key
+- `OPENAI_MODEL`: 선택 (기본 `gpt-4.1-mini`)
+- `AI_PROVIDER`: 선택 (기본 `openai`)
+- `GITHUB_HOST`: 선택 (GitHub Enterprise Server인 경우만)
+
+## 실행 방법
+
+로컬 개발:
+
+```bash
+npm install
+cp .env.example .env
+npm run build
+npm run dev
+```
+
+로컬에서 Lambda 배포:
+
+```bash
+npm install
+npm run build
+npm prune --omit=dev
+sam deploy \
+  --template-file template.yaml \
+  --stack-name coding-test-review-app \
+  --region ap-northeast-2 \
+  --capabilities CAPABILITY_IAM \
+  --resolve-s3 \
+  --parameter-overrides \
+    AppId=YOUR_APP_ID \
+    PrivateKeyBase64=YOUR_PRIVATE_KEY_BASE64 \
+    WebhookSecret=YOUR_WEBHOOK_SECRET \
+    OpenAiApiKey=YOUR_OPENAI_API_KEY \
+    OpenAiModel=gpt-4.1-mini \
+    AiProvider=openai \
+    GithubHost=
+```
+
+배포 후 Webhook URL 조회:
+
+```bash
+aws cloudformation describe-stacks \
+  --stack-name coding-test-review-app \
+  --query "Stacks[0].Outputs[?OutputKey=='WebhookUrl'].OutputValue" \
+  --output text
+```

@@ -1,4 +1,4 @@
-name: CD
+name: CD (Lambda)
 
 on:
   workflow_dispatch:
@@ -7,92 +7,78 @@ on:
       - main
 
 concurrency:
-  group: prod-deploy
+  group: prod-deploy-lambda
   cancel-in-progress: true
 
 permissions:
+  id-token: write
   contents: read
-  packages: write
 
 jobs:
-  build-and-push:
+  deploy:
     runs-on: ubuntu-24.04
-    outputs:
-      image: ${{ steps.vars.outputs.image }}
+    env:
+      STACK_NAME: ${{ secrets.LAMBDA_STACK_NAME }}
+      AWS_REGION: ${{ secrets.AWS_REGION }}
+      APP_ID: ${{ secrets.APP_ID }}
+      PRIVATE_KEY_BASE64: ${{ secrets.PRIVATE_KEY_BASE64 }}
+      WEBHOOK_SECRET: ${{ secrets.WEBHOOK_SECRET }}
+      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+      OPENAI_MODEL: ${{ secrets.OPENAI_MODEL }}
+      AI_PROVIDER: ${{ secrets.AI_PROVIDER }}
+      GITHUB_HOST: ${{ secrets.GITHUB_HOST }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Set image name
-        id: vars
-        run: echo "image=ghcr.io/${{ github.repository_owner }}/coding-test-review-app:latest" >> "$GITHUB_OUTPUT"
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
-      - name: Login to GHCR
-        uses: docker/login-action@v3
+      - name: Setup Node
+        uses: actions/setup-node@v4
         with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
+          node-version: 22
+          cache: npm
 
-      - name: Build and push image
-        uses: docker/build-push-action@v6
+      - name: Setup SAM CLI
+        uses: aws-actions/setup-sam@v2
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
         with:
-          context: .
-          push: true
-          tags: |
-            ghcr.io/${{ github.repository_owner }}/coding-test-review-app:latest
-            ghcr.io/${{ github.repository_owner }}/coding-test-review-app:${{ github.sha }}
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ secrets.AWS_REGION }}
 
-  deploy:
-    runs-on: ubuntu-24.04
-    needs: build-and-push
-    steps:
-      - name: Setup SSH agent
-        uses: webfactory/ssh-agent@v0.9.0
-        with:
-          ssh-private-key: ${{ secrets.SERVER_SSH_KEY }}
+      - name: Install dependencies
+        run: npm ci
 
-      - name: Add server to known_hosts
-        env:
-          SERVER_HOST: ${{ secrets.SERVER_HOST }}
-          SERVER_PORT: ${{ secrets.SERVER_PORT }}
+      - name: Build TypeScript
+        run: npm run build
+
+      - name: Prune dev dependencies
+        run: npm prune --omit=dev
+
+      - name: Validate template
+        run: sam validate --template-file template.yaml
+
+      - name: Deploy Lambda
         run: |
-          PORT="${SERVER_PORT:-22}"
-          mkdir -p ~/.ssh
-          ssh-keyscan -p "$PORT" "$SERVER_HOST" >> ~/.ssh/known_hosts
-
-      - name: Deploy container on EC2
-        env:
-          SERVER_HOST: ${{ secrets.SERVER_HOST }}
-          SERVER_USER: ${{ secrets.SERVER_USER }}
-          SERVER_PORT: ${{ secrets.SERVER_PORT }}
-          GHCR_USERNAME: ${{ secrets.GHCR_USERNAME }}
-          GHCR_TOKEN: ${{ secrets.GHCR_TOKEN }}
-          APP_ENV_FILE_BASE64: ${{ secrets.APP_ENV_FILE_BASE64 }}
-          IMAGE: ${{ needs.build-and-push.outputs.image }}
-        run: |
-          PORT="${SERVER_PORT:-22}"
-          ssh -p "$PORT" "$SERVER_USER@$SERVER_HOST" \
-            "IMAGE='$IMAGE' GHCR_USERNAME='$GHCR_USERNAME' GHCR_TOKEN='$GHCR_TOKEN' APP_ENV_FILE_BASE64='$APP_ENV_FILE_BASE64' bash -s" <<'EOF'
           set -euo pipefail
+          STACK="${STACK_NAME:-coding-test-review-app}"
+          MODEL="${OPENAI_MODEL:-gpt-5-mini}"
+          PROVIDER="${AI_PROVIDER:-openai}"
+          HOST="${GITHUB_HOST:-}"
 
-          APP_DIR="/opt/coding-test-review"
-          CONTAINER_NAME="coding-test-review-app"
-
-          mkdir -p "$APP_DIR"
-          echo "$APP_ENV_FILE_BASE64" | base64 -d > "$APP_DIR/.env"
-
-          echo "$GHCR_TOKEN" | docker login ghcr.io -u "$GHCR_USERNAME" --password-stdin
-          docker pull "$IMAGE"
-
-          docker rm -f "$CONTAINER_NAME" 2>/dev/null || true
-          docker run -d \
-            --name "$CONTAINER_NAME" \
-            --restart unless-stopped \
-            --env-file "$APP_DIR/.env" \
-            -p 3000:3000 \
-            "$IMAGE"
-          EOF
+          sam deploy \
+            --template-file template.yaml \
+            --stack-name "$STACK" \
+            --region "$AWS_REGION" \
+            --capabilities CAPABILITY_IAM \
+            --no-confirm-changeset \
+            --no-fail-on-empty-changeset \
+            --resolve-s3 \
+            --parameter-overrides \
+              AppId="$APP_ID" \
+              PrivateKeyBase64="$PRIVATE_KEY_BASE64" \
+              WebhookSecret="$WEBHOOK_SECRET" \
+              OpenAiApiKey="$OPENAI_API_KEY" \
+              OpenAiModel="$MODEL" \
+              AiProvider="$PROVIDER" \
+              GithubHost="$HOST"

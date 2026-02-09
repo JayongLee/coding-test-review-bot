@@ -25,5 +25,8 @@ jobs:
       - name: TypeScript build
         run: npm run build
 
-      - name: Docker build check
-        run: docker build -t coding-test-review-app:ci .
+      - name: Setup SAM CLI
+        uses: aws-actions/setup-sam@v2
+
+      - name: SAM validate
+        run: sam validate --template-file template.yaml

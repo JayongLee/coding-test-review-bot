@@ -1,0 +1,61 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Transform: AWS::Serverless-2016-10-31
+Description: Coding Test Review GitHub App on AWS Lambda
+
+Parameters:
+  AppId:
+    Type: String
+  PrivateKeyBase64:
+    Type: String
+    NoEcho: true
+  WebhookSecret:
+    Type: String
+    NoEcho: true
+  OpenAiApiKey:
+    Type: String
+    NoEcho: true
+    Default: ""
+  OpenAiModel:
+    Type: String
+    Default: gpt-4.1-mini
+  AiProvider:
+    Type: String
+    Default: openai
+  GithubHost:
+    Type: String
+    Default: ""
+
+Globals:
+  Function:
+    Runtime: nodejs22.x
+    Architectures:
+      - x86_64
+    Timeout: 60
+    MemorySize: 1024
+
+Resources:
+  GithubWebhookFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: .
+      Handler: dist/lambda.webhooks
+      Events:
+        Webhook:
+          Type: HttpApi
+          Properties:
+            Path: /api/github/webhooks
+            Method: POST
+      Environment:
+        Variables:
+          APP_ID: !Ref AppId
+          PRIVATE_KEY_BASE64: !Ref PrivateKeyBase64
+          WEBHOOK_SECRET: !Ref WebhookSecret
+          OPENAI_API_KEY: !Ref OpenAiApiKey
+          OPENAI_MODEL: !Ref OpenAiModel
+          AI_PROVIDER: !Ref AiProvider
+          GITHUB_HOST: !Ref GithubHost
+
+Outputs:
+  WebhookUrl:
+    Description: GitHub App Webhook URL
+    Value: !Sub "https://${ServerlessHttpApi}.execute-api.${AWS::Region}.amazonaws.com/api/github/webhooks"
