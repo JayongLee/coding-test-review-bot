@@ -9,10 +9,10 @@ PR에서 코딩테스트 메타데이터를 읽고 문제를 크롤링한 뒤, �
 
 ## 동작 흐름
 
-1. `push` 이벤트에서 브랜치에 연결된 오픈 PR을 찾음
-2. PR 템플릿 필수 필드(`Site`, `Problem Number`, `Language`) 검증
-3. 누락 시 가이드 코멘트 작성
-4. `pull_request.opened/edited/synchronize`에서 문제 크롤링
+1. GitHub webhook 수신 Lambda가 이벤트를 SQS에 적재
+2. Worker Lambda가 SQS 메시지를 비동기 처리
+3. `push` 이벤트는 브랜치에 연결된 오픈 PR 템플릿 누락 검사
+4. `pull_request.opened/edited/synchronize`는 문제 크롤링/문서 생성/AI 리뷰 수행
 5. PR 브랜치에 아래 구조로 파일 커밋
    - `{문제번호}.{문제명}/README.md`
    - `{문제번호}.{문제명}/문제.java`
@@ -81,7 +81,14 @@ npm run dev
 ## AWS Lambda 배포
 
 Lambda 엔트리포인트는 `/Users/jayong/Programming/spring/coding-test-review/src/lambda.ts`이며,
-SAM 템플릿은 `/Users/jayong/Programming/spring/coding-test-review/template.yaml`입니다.
+Worker 엔트리포인트는 `/Users/jayong/Programming/spring/coding-test-review/src/worker.ts`입니다.
+
+SAM 템플릿(`/Users/jayong/Programming/spring/coding-test-review/template.yaml`)은 다음 리소스를 생성합니다.
+
+- API Gateway HTTP API
+- Webhook Lambda (ingress)
+- SQS Queue
+- Worker Lambda (SQS trigger)
 
 Webhook URL 경로는 `/api/github/webhooks` 입니다.
 
@@ -104,6 +111,7 @@ Webhook URL 경로는 `/api/github/webhooks` 입니다.
 - `WEBHOOK_SECRET`: GitHub App webhook secret
 - `OPENAI_API_KEY`: OpenAI API Key
 - `OPENAI_MODEL`: 선택 (기본 `gpt-4.1-mini`)
+- `OPENAI_TIMEOUT_MS`: 선택 (기본 `5000`)
 - `AI_PROVIDER`: 선택 (기본 `openai`)
 - `GITHUB_HOST`: 선택 (GitHub Enterprise Server인 경우만)
 
@@ -116,6 +124,12 @@ npm install
 cp .env.example .env
 npm run build
 npm run dev
+```
+
+로컬 worker 실행(선택):
+
+```bash
+node -e "import('./dist/worker.js').then(()=>console.log('worker loaded'))"
 ```
 
 로컬에서 Lambda 배포:

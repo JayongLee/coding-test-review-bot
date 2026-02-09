@@ -1,9 +1,8 @@
 import adapter from "@probot/adapter-aws-lambda-serverless";
+import { ensurePrivateKeyLoaded } from "./env.js";
 import app from "./index.js";
 
-if (!process.env.PRIVATE_KEY && process.env.PRIVATE_KEY_BASE64) {
-  process.env.PRIVATE_KEY = Buffer.from(process.env.PRIVATE_KEY_BASE64, "base64").toString("utf-8");
-}
+ensurePrivateKeyLoaded();
 
 const { createLambdaFunction, createProbot } = adapter;
 const probot = createProbot();

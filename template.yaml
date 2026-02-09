@@ -30,15 +30,28 @@ Globals:
     Runtime: nodejs22.x
     Architectures:
       - x86_64
-    Timeout: 60
+    Timeout: 30
     MemorySize: 1024
 
 Resources:
+  WebhookQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      VisibilityTimeout: 300
+      MessageRetentionPeriod: 1209600
+
   GithubWebhookFunction:
     Type: AWS::Serverless::Function
     Properties:
       CodeUri: .
       Handler: dist/lambda.webhooks
+      Timeout: 10
+      Policies:
+        - Statement:
+            - Effect: Allow
+              Action:
+                - sqs:SendMessage
+              Resource: !GetAtt WebhookQueue.Arn
       Events:
         Webhook:
           Type: HttpApi
@@ -54,8 +67,36 @@ Resources:
           OPENAI_MODEL: !Ref OpenAiModel
           AI_PROVIDER: !Ref AiProvider
           GITHUB_HOST: !Ref GithubHost
+          WEBHOOK_QUEUE_URL: !Ref WebhookQueue
+
+  GithubWorkerFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: .
+      Handler: dist/worker.handler
+      Timeout: 120
+      FunctionResponseTypes:
+        - ReportBatchItemFailures
+      Events:
+        WebhookQueueEvent:
+          Type: SQS
+          Properties:
+            Queue: !GetAtt WebhookQueue.Arn
+            BatchSize: 1
+      Environment:
+        Variables:
+          APP_ID: !Ref AppId
+          PRIVATE_KEY_BASE64: !Ref PrivateKeyBase64
+          WEBHOOK_SECRET: !Ref WebhookSecret
+          OPENAI_API_KEY: !Ref OpenAiApiKey
+          OPENAI_MODEL: !Ref OpenAiModel
+          AI_PROVIDER: !Ref AiProvider
+          GITHUB_HOST: !Ref GithubHost
 
 Outputs:
   WebhookUrl:
     Description: GitHub App Webhook URL
     Value: !Sub "https://${ServerlessHttpApi}.execute-api.${AWS::Region}.amazonaws.com/api/github/webhooks"
+  WorkerQueueUrl:
+    Description: SQS queue url for async webhook processing
+    Value: !Ref WebhookQueue

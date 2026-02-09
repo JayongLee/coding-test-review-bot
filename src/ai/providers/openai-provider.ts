@@ -57,10 +57,12 @@ function normalizeInline(items: OpenAiResponseShape["inline_suggestions"]): Inli
 export class OpenAiProvider implements AiProvider {
   private readonly client: OpenAI;
   private readonly model: string;
+  private readonly timeoutMs: number;
 
   constructor(apiKey: string, model: string) {
     this.client = new OpenAI({ apiKey });
     this.model = model;
+    this.timeoutMs = Number(process.env.OPENAI_TIMEOUT_MS ?? "5000");
   }
 
   async generateReview(input: AiReviewInput): Promise<AiReviewResult | null> {
@@ -100,10 +102,20 @@ ${input.prBody}
 ${input.changedCodePrompt}
 `;
 
-    const response = await this.client.responses.create({
-      model: this.model,
-      input: prompt
-    });
+    let response;
+    try {
+      response = await this.client.responses.create(
+        {
+          model: this.model,
+          input: prompt
+        },
+        {
+          timeout: Number.isFinite(this.timeoutMs) ? this.timeoutMs : 5000
+        }
+      );
+    } catch {
+      return null;
+    }
 
     const raw = response.output_text?.trim();
     if (!raw) return null;
