@@ -29,4 +29,6 @@ jobs:
         uses: aws-actions/setup-sam@v2
 
       - name: SAM validate
-        run: sam validate --template-file template.yaml
+        env:
+          SAM_CLI_TELEMETRY: 0
+        run: sam validate --template-file template.yaml --region ap-northeast-2
