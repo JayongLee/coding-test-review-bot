@@ -204,14 +204,23 @@ async function handlePullRequestJob(job: WorkerJob, octokit: Octokit): Promise<v
     });
 
     if (!aiReview) {
-      const provider = process.env.AI_PROVIDER || "openai";
-      const model = process.env.OPENAI_MODEL || "gpt-4.1-mini";
-      const timeout = process.env.OPENAI_TIMEOUT_MS || "15000";
-      const hasKey = Boolean(process.env.OPENAI_API_KEY && process.env.OPENAI_API_KEY.trim().length > 0);
+      const provider = (process.env.AI_PROVIDER || "gemini").toLowerCase();
+      const model =
+        provider === "gemini"
+          ? process.env.GEMINI_MODEL || "gemini-2.0-flash"
+          : process.env.OPENAI_MODEL || "gpt-4.1-mini";
+      const timeout =
+        provider === "gemini"
+          ? process.env.GEMINI_TIMEOUT_MS || "15000"
+          : process.env.OPENAI_TIMEOUT_MS || "15000";
+      const hasKey =
+        provider === "gemini"
+          ? Boolean(process.env.GEMINI_API_KEY && process.env.GEMINI_API_KEY.trim().length > 0)
+          : Boolean(process.env.OPENAI_API_KEY && process.env.OPENAI_API_KEY.trim().length > 0);
 
       await upsertAiReviewComment(
         context,
-        `AI 리뷰를 생성하지 못했습니다. (provider=${provider}, model=${model}, timeoutMs=${timeout}, openaiKey=${hasKey ? "set" : "missing"})\nCloudWatch 로그에서 \`OpenAI request failed\` 메시지를 확인해주세요.`
+        `AI 리뷰를 생성하지 못했습니다. (provider=${provider}, model=${model}, timeoutMs=${timeout}, apiKey=${hasKey ? "set" : "missing"})\nCloudWatch Worker 로그에서 provider 실패 메시지를 확인해주세요.`
       );
       return;
     }

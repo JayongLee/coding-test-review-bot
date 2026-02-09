@@ -49,15 +49,16 @@ npm run dev
 
 선택:
 
-- `AI_PROVIDER` (기본값 `openai`)
-- `OPENAI_API_KEY`
-- `OPENAI_MODEL` (기본값 `gpt-4.1-mini`)
+- `AI_PROVIDER` (기본값 `gemini`, `openai` 지원)
+- `OPENAI_API_KEY` / `OPENAI_MODEL` / `OPENAI_TIMEOUT_MS`
+- `GEMINI_API_KEY` / `GEMINI_MODEL` / `GEMINI_TIMEOUT_MS`
 - `GITHUB_HOST` (GitHub Enterprise Server 사용 시)
 
 ## AI 모듈 구조
 
 - `/Users/jayong/Programming/spring/coding-test-review/src/ai/types.ts`: 공통 인터페이스
 - `/Users/jayong/Programming/spring/coding-test-review/src/ai/providers/openai-provider.ts`: OpenAI 구현
+- `/Users/jayong/Programming/spring/coding-test-review/src/ai/providers/gemini-provider.ts`: Gemini 구현
 - `/Users/jayong/Programming/spring/coding-test-review/src/ai/index.ts`: provider 선택(팩토리)
 
 다른 AI API를 붙일 때는 `src/ai/providers/`에 provider를 추가하고 `src/ai/index.ts`에서 분기만 확장하면 됩니다.
@@ -109,10 +110,13 @@ Webhook URL 경로는 `/api/github/webhooks` 입니다.
 - `APP_ID`: GitHub App ID
 - `PRIVATE_KEY_BASE64`: GitHub App private key 전체를 base64 인코딩한 값
 - `WEBHOOK_SECRET`: GitHub App webhook secret
-- `OPENAI_API_KEY`: OpenAI API Key
+- `AI_PROVIDER`: `openai` 또는 `gemini`
+- `OPENAI_API_KEY`: OpenAI 사용 시 필수
 - `OPENAI_MODEL`: 선택 (기본 `gpt-4.1-mini`)
 - `OPENAI_TIMEOUT_MS`: 선택 (기본 `15000`)
-- `AI_PROVIDER`: 선택 (기본 `openai`)
+- `GEMINI_API_KEY`: Gemini 사용 시 필수
+- `GEMINI_MODEL`: 선택 (기본 `gemini-2.0-flash`)
+- `GEMINI_TIMEOUT_MS`: 선택 (기본 `15000`)
 - `GITHUB_HOST`: 선택 (GitHub Enterprise Server인 경우만)
 
 ## 실행 방법
@@ -148,9 +152,10 @@ sam deploy \
     AppId=YOUR_APP_ID \
     PrivateKeyBase64=YOUR_PRIVATE_KEY_BASE64 \
     WebhookSecret=YOUR_WEBHOOK_SECRET \
-    OpenAiApiKey=YOUR_OPENAI_API_KEY \
-    OpenAiModel=gpt-4.1-mini \
-    AiProvider=openai \
+    AiProvider=gemini \
+    GeminiApiKey=YOUR_GEMINI_API_KEY \
+    GeminiModel=gemini-2.0-flash \
+    GeminiTimeoutMs=15000 \
     GithubHost=
 ```
 

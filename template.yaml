@@ -17,13 +17,23 @@ Parameters:
     Default: ""
   OpenAiModel:
     Type: String
-    Default: gpt-5-mini
+    Default: gpt-4.1-mini
   OpenAiTimeoutMs:
     Type: String
-    Default: "150000"
+    Default: "15000"
+  GeminiApiKey:
+    Type: String
+    NoEcho: true
+    Default: ""
+  GeminiModel:
+    Type: String
+    Default: gemini-2.0-flash
+  GeminiTimeoutMs:
+    Type: String
+    Default: "15000"
   AiProvider:
     Type: String
-    Default: openai
+    Default: gemini
   GithubHost:
     Type: String
     Default: ""
@@ -69,6 +79,9 @@ Resources:
           OPENAI_API_KEY: !Ref OpenAiApiKey
           OPENAI_MODEL: !Ref OpenAiModel
           OPENAI_TIMEOUT_MS: !Ref OpenAiTimeoutMs
+          GEMINI_API_KEY: !Ref GeminiApiKey
+          GEMINI_MODEL: !Ref GeminiModel
+          GEMINI_TIMEOUT_MS: !Ref GeminiTimeoutMs
           AI_PROVIDER: !Ref AiProvider
           GITHUB_HOST: !Ref GithubHost
           WEBHOOK_QUEUE_URL: !Ref WebhookQueue
@@ -93,6 +106,9 @@ Resources:
           OPENAI_API_KEY: !Ref OpenAiApiKey
           OPENAI_MODEL: !Ref OpenAiModel
           OPENAI_TIMEOUT_MS: !Ref OpenAiTimeoutMs
+          GEMINI_API_KEY: !Ref GeminiApiKey
+          GEMINI_MODEL: !Ref GeminiModel
+          GEMINI_TIMEOUT_MS: !Ref GeminiTimeoutMs
           AI_PROVIDER: !Ref AiProvider
           GITHUB_HOST: !Ref GithubHost
 

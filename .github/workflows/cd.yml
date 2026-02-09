@@ -26,6 +26,9 @@ jobs:
       OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
       OPENAI_MODEL: ${{ secrets.OPENAI_MODEL }}
       OPENAI_TIMEOUT_MS: ${{ secrets.OPENAI_TIMEOUT_MS }}
+      GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+      GEMINI_MODEL: ${{ secrets.GEMINI_MODEL }}
+      GEMINI_TIMEOUT_MS: ${{ secrets.GEMINI_TIMEOUT_MS }}
       AI_PROVIDER: ${{ secrets.AI_PROVIDER }}
       GITHUB_HOST: ${{ secrets.GITHUB_HOST }}
     steps:
@@ -67,7 +70,9 @@ jobs:
           STACK="${STACK_NAME:-coding-test-review-app}"
           MODEL="${OPENAI_MODEL:-gpt-4.1-mini}"
           TIMEOUT_MS="${OPENAI_TIMEOUT_MS:-15000}"
-          PROVIDER="${AI_PROVIDER:-openai}"
+          GEM_MODEL="${GEMINI_MODEL:-gemini-2.0-flash}"
+          GEM_TIMEOUT_MS="${GEMINI_TIMEOUT_MS:-15000}"
+          PROVIDER="${AI_PROVIDER:-gemini}"
           HOST="${GITHUB_HOST:-}"
 
           PARAMS=(
@@ -86,6 +91,18 @@ jobs:
 
           if [ -n "${TIMEOUT_MS:-}" ]; then
             PARAMS+=("OpenAiTimeoutMs=$TIMEOUT_MS")
+          fi
+
+          if [ -n "${GEMINI_API_KEY:-}" ]; then
+            PARAMS+=("GeminiApiKey=$GEMINI_API_KEY")
+          fi
+
+          if [ -n "${GEM_MODEL:-}" ]; then
+            PARAMS+=("GeminiModel=$GEM_MODEL")
+          fi
+
+          if [ -n "${GEM_TIMEOUT_MS:-}" ]; then
+            PARAMS+=("GeminiTimeoutMs=$GEM_TIMEOUT_MS")
           fi
 
           if [ -n "${PROVIDER:-}" ]; then
