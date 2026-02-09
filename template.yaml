@@ -75,8 +75,6 @@ Resources:
       CodeUri: .
       Handler: dist/worker.handler
       Timeout: 120
-      FunctionResponseTypes:
-        - ReportBatchItemFailures
       Events:
         WebhookQueueEvent:
           Type: SQS
