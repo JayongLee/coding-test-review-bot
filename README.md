@@ -111,7 +111,7 @@ Webhook URL 경로는 `/api/github/webhooks` 입니다.
 - `WEBHOOK_SECRET`: GitHub App webhook secret
 - `OPENAI_API_KEY`: OpenAI API Key
 - `OPENAI_MODEL`: 선택 (기본 `gpt-4.1-mini`)
-- `OPENAI_TIMEOUT_MS`: 선택 (기본 `5000`)
+- `OPENAI_TIMEOUT_MS`: 선택 (기본 `15000`)
 - `AI_PROVIDER`: 선택 (기본 `openai`)
 - `GITHUB_HOST`: 선택 (GitHub Enterprise Server인 경우만)
 

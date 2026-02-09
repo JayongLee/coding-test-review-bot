@@ -62,7 +62,7 @@ export class OpenAiProvider implements AiProvider {
   constructor(apiKey: string, model: string) {
     this.client = new OpenAI({ apiKey });
     this.model = model;
-    this.timeoutMs = Number(process.env.OPENAI_TIMEOUT_MS ?? "5000");
+    this.timeoutMs = Number(process.env.OPENAI_TIMEOUT_MS ?? "150000");
   }
 
   async generateReview(input: AiReviewInput): Promise<AiReviewResult | null> {
@@ -113,15 +113,29 @@ ${input.changedCodePrompt}
           timeout: Number.isFinite(this.timeoutMs) ? this.timeoutMs : 5000
         }
       );
-    } catch {
+    } catch (error) {
+      console.error("OpenAI request failed", {
+        model: this.model,
+        timeoutMs: this.timeoutMs,
+        message: error instanceof Error ? error.message : String(error)
+      });
       return null;
     }
 
     const raw = response.output_text?.trim();
-    if (!raw) return null;
+    if (!raw) {
+      console.error("OpenAI response was empty", { model: this.model });
+      return null;
+    }
 
     const parsed = parseResponse(raw);
-    if (!parsed) return null;
+    if (!parsed) {
+      console.error("OpenAI response JSON parse failed", {
+        model: this.model,
+        preview: raw.slice(0, 300)
+      });
+      return null;
+    }
 
     return {
       summaryMarkdown: parsed.summary_markdown.trim(),
