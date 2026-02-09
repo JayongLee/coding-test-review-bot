@@ -204,9 +204,14 @@ async function handlePullRequestJob(job: WorkerJob, octokit: Octokit): Promise<v
     });
 
     if (!aiReview) {
+      const provider = process.env.AI_PROVIDER || "openai";
+      const model = process.env.OPENAI_MODEL || "gpt-4.1-mini";
+      const timeout = process.env.OPENAI_TIMEOUT_MS || "15000";
+      const hasKey = Boolean(process.env.OPENAI_API_KEY && process.env.OPENAI_API_KEY.trim().length > 0);
+
       await upsertAiReviewComment(
         context,
-        "AI 리뷰를 생성하지 못했습니다. `AI_PROVIDER`, `OPENAI_API_KEY` 설정을 확인해주세요."
+        `AI 리뷰를 생성하지 못했습니다. (provider=${provider}, model=${model}, timeoutMs=${timeout}, openaiKey=${hasKey ? "set" : "missing"})\nCloudWatch 로그에서 \`OpenAI request failed\` 메시지를 확인해주세요.`
       );
       return;
     }
