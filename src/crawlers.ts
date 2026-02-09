@@ -1,16 +1,48 @@
 import { load } from "cheerio";
 import type { CrawledProblem, PrProblemMetadata } from "./types.js";
 
+const BROWSER_USER_AGENT =
+  "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36";
+
+class ForbiddenFetchError extends Error {
+  constructor(public readonly url: string) {
+    super(`Failed to fetch problem page: 403 (${url})`);
+    this.name = "ForbiddenFetchError";
+  }
+}
+
+function getCandidateHeaders(url: string): HeadersInit[] {
+  const origin = new URL(url).origin;
+  const base = {
+    "user-agent": BROWSER_USER_AGENT,
+    accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+    "accept-language": "ko-KR,ko;q=0.9,en-US;q=0.8,en;q=0.7",
+    "cache-control": "no-cache",
+    pragma: "no-cache"
+  };
+
+  return [base, { ...base, referer: origin }, { ...base, referer: `${origin}/` }];
+}
+
 async function fetchHtml(url: string): Promise<string> {
-  const response = await fetch(url, {
-    headers: {
-      "user-agent": "coding-test-review-bot/0.1"
+  for (const headers of getCandidateHeaders(url)) {
+    const response = await fetch(url, {
+      headers,
+      redirect: "follow"
+    });
+
+    if (response.ok) {
+      return response.text();
     }
-  });
-  if (!response.ok) {
+
+    if (response.status === 403) {
+      continue;
+    }
+
     throw new Error(`Failed to fetch problem page: ${response.status}`);
   }
-  return response.text();
+
+  throw new ForbiddenFetchError(url);
 }
 
 async function crawlBoj(problemNumber: string): Promise<CrawledProblem> {
@@ -78,17 +110,43 @@ async function crawlProgrammers(problemNumber: string): Promise<CrawledProblem> 
   };
 }
 
+function buildFallbackProblem(metadata: PrProblemMetadata): CrawledProblem {
+  const siteName = metadata.site === "PROGRAMMERS" ? "프로그래머스" : "백준";
+  const problemNumber = metadata.problemNumber ?? "unknown";
+  const problemUrl =
+    metadata.site === "PROGRAMMERS"
+      ? `https://school.programmers.co.kr/learn/courses/30/lessons/${problemNumber}`
+      : `https://www.acmicpc.net/problem/${problemNumber}`;
+
+  return {
+    title: `${siteName} 문제 ${problemNumber}`,
+    problemUrl,
+    classification: [],
+    descriptionHtml:
+      "문제 사이트가 크롤링 요청을 차단했습니다(HTTP 403). 문제 링크를 통해 직접 확인한 뒤, PR 본문의 Solution Summary를 자세히 작성해주세요.",
+    inputHtml: "입력 설명을 자동 수집하지 못했습니다.",
+    outputHtml: "출력 설명을 자동 수집하지 못했습니다."
+  };
+}
+
 export async function crawlProblem(metadata: PrProblemMetadata): Promise<CrawledProblem> {
   if (!metadata.site || !metadata.problemNumber) {
     throw new Error("Missing required metadata");
   }
 
-  switch (metadata.site) {
-    case "BOJ":
-      return crawlBoj(metadata.problemNumber);
-    case "PROGRAMMERS":
-      return crawlProgrammers(metadata.problemNumber);
-    default:
-      throw new Error(`Unsupported site: ${String(metadata.site)}`);
+  try {
+    switch (metadata.site) {
+      case "BOJ":
+        return crawlBoj(metadata.problemNumber);
+      case "PROGRAMMERS":
+        return crawlProgrammers(metadata.problemNumber);
+      default:
+        throw new Error(`Unsupported site: ${String(metadata.site)}`);
+    }
+  } catch (error) {
+    if (error instanceof ForbiddenFetchError) {
+      return buildFallbackProblem(metadata);
+    }
+    throw error;
   }
 }
