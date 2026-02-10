@@ -17,3 +17,25 @@ export function requireEnv(name: string): string {
   }
   return value;
 }
+
+export function optionalEnv(name: string): string | undefined {
+  const value = process.env[name];
+  if (!value) return undefined;
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : undefined;
+}
+
+export function resolveGithubApiBaseUrl(): string | undefined {
+  const host = optionalEnv("GITHUB_HOST");
+  if (!host) return undefined;
+
+  if (host.startsWith("http://") || host.startsWith("https://")) {
+    const url = new URL(host);
+    if (!url.pathname || url.pathname === "/") {
+      url.pathname = "/api/v3";
+    }
+    return url.toString().replace(/\/$/, "");
+  }
+
+  return `https://${host}/api/v3`;
+}

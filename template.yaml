@@ -37,6 +37,10 @@ Parameters:
   GithubHost:
     Type: String
     Default: ""
+  ExtensionApiToken:
+    Type: String
+    NoEcho: true
+    Default: ""
 
 Globals:
   Function:
@@ -47,6 +51,22 @@ Globals:
     MemorySize: 1024
 
 Resources:
+  ServerlessHttpApi:
+    Type: AWS::Serverless::HttpApi
+    Properties:
+      CorsConfiguration:
+        AllowOrigins:
+          - "*"
+        AllowMethods:
+          - POST
+          - OPTIONS
+        AllowHeaders:
+          - content-type
+          - authorization
+          - x-github-event
+          - x-github-delivery
+          - x-hub-signature-256
+
   WebhookQueue:
     Type: AWS::SQS::Queue
     Properties:
@@ -69,6 +89,7 @@ Resources:
         Webhook:
           Type: HttpApi
           Properties:
+            ApiId: !Ref ServerlessHttpApi
             Path: /api/github/webhooks
             Method: POST
       Environment:
@@ -85,6 +106,26 @@ Resources:
           AI_PROVIDER: !Ref AiProvider
           GITHUB_HOST: !Ref GithubHost
           WEBHOOK_QUEUE_URL: !Ref WebhookQueue
+
+  ExtensionSubmissionFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: .
+      Handler: dist/extension-lambda.handler
+      Timeout: 20
+      Events:
+        ExtensionSubmission:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref ServerlessHttpApi
+            Path: /api/extension/submissions
+            Method: POST
+      Environment:
+        Variables:
+          APP_ID: !Ref AppId
+          PRIVATE_KEY_BASE64: !Ref PrivateKeyBase64
+          GITHUB_HOST: !Ref GithubHost
+          EXTENSION_API_TOKEN: !Ref ExtensionApiToken
 
   GithubWorkerFunction:
     Type: AWS::Serverless::Function
@@ -116,6 +157,9 @@ Outputs:
   WebhookUrl:
     Description: GitHub App Webhook URL
     Value: !Sub "https://${ServerlessHttpApi}.execute-api.${AWS::Region}.amazonaws.com/api/github/webhooks"
+  ExtensionSubmissionUrl:
+    Description: Safari extension submission API URL
+    Value: !Sub "https://${ServerlessHttpApi}.execute-api.${AWS::Region}.amazonaws.com/api/extension/submissions"
   WorkerQueueUrl:
     Description: SQS queue url for async webhook processing
     Value: !Ref WebhookQueue

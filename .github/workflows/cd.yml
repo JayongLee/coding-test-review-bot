@@ -31,6 +31,7 @@ jobs:
       GEMINI_TIMEOUT_MS: ${{ secrets.GEMINI_TIMEOUT_MS }}
       AI_PROVIDER: ${{ secrets.AI_PROVIDER }}
       GITHUB_HOST: ${{ secrets.GITHUB_HOST }}
+      EXTENSION_API_TOKEN: ${{ secrets.EXTENSION_API_TOKEN }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -111,6 +112,10 @@ jobs:
 
           if [ -n "${HOST:-}" ]; then
             PARAMS+=("GithubHost=$HOST")
+          fi
+
+          if [ -n "${EXTENSION_API_TOKEN:-}" ]; then
+            PARAMS+=("ExtensionApiToken=$EXTENSION_API_TOKEN")
           fi
 
           sam deploy \

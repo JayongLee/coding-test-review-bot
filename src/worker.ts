@@ -2,7 +2,7 @@ import { createAppAuth } from "@octokit/auth-app";
 import { Octokit } from "@octokit/rest";
 import { generateAiReview } from "./ai/index.js";
 import { crawlProblem } from "./crawlers.js";
-import { ensurePrivateKeyLoaded, requireEnv } from "./env.js";
+import { ensurePrivateKeyLoaded, requireEnv, resolveGithubApiBaseUrl } from "./env.js";
 import {
   buildChangedCodePrompt,
   commitFilesToPrBranch,
@@ -111,6 +111,7 @@ async function getOctokitForInstallation(installationId: number): Promise<Octoki
   const appId = requireEnv("APP_ID");
   const privateKey = ensurePrivateKeyLoaded();
 
+  const baseUrl = resolveGithubApiBaseUrl();
   const promise = (async () => {
     const auth = createAppAuth({
       appId,
@@ -118,7 +119,10 @@ async function getOctokitForInstallation(installationId: number): Promise<Octoki
       installationId
     });
     const installationAuth = await auth({ type: "installation" });
-    return new Octokit({ auth: installationAuth.token });
+    return new Octokit({
+      auth: installationAuth.token,
+      ...(baseUrl ? { baseUrl } : {})
+    });
   })();
 
   octokitCache.set(installationId, promise);
@@ -153,7 +157,7 @@ async function handlePushJob(job: WorkerJob, octokit: Octokit): Promise<void> {
 
 async function handlePullRequestJob(job: WorkerJob, octokit: Octokit): Promise<void> {
   if (job.type !== "pull_request") return;
-  if (job.senderType === "Bot") return;
+  if (job.senderType === "Bot" && job.action !== "opened") return;
 
   const pull = (
     await octokit.rest.pulls.get({

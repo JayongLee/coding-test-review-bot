@@ -27,7 +27,7 @@ export default (app: Probot): void => {
   });
 
   app.on(["pull_request.opened", "pull_request.edited", "pull_request.synchronize"], async (context) => {
-    if (context.payload.sender?.type === "Bot") return;
+    if (context.payload.sender?.type === "Bot" && context.payload.action !== "opened") return;
     if (!context.payload.installation?.id) return;
 
     try {

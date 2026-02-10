@@ -1,0 +1,1005 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 77;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		B248978A2F3B1F9E00A313F0 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = B24897892F3B1F9E00A313F0 /* AppDelegate.swift */; };
+		B248978C2F3B1F9E00A313F0 /* SceneDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = B248978B2F3B1F9E00A313F0 /* SceneDelegate.swift */; };
+		B248978F2F3B1F9E00A313F0 /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = B248978D2F3B1F9E00A313F0 /* LaunchScreen.storyboard */; };
+		B24897922F3B1F9E00A313F0 /* Main.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = B24897902F3B1F9E00A313F0 /* Main.storyboard */; };
+		B248979B2F3B1F9E00A313F0 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = B248979A2F3B1F9E00A313F0 /* AppDelegate.swift */; };
+		B248979E2F3B1F9E00A313F0 /* Main.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = B248979C2F3B1F9E00A313F0 /* Main.storyboard */; };
+		B24897A52F3B1F9E00A313F0 /* Coding Test Auto PR (Safari) Extension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = B24897A42F3B1F9E00A313F0 /* Coding Test Auto PR (Safari) Extension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		B24897AF2F3B1F9E00A313F0 /* Coding Test Auto PR (Safari) Extension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = B24897AE2F3B1F9E00A313F0 /* Coding Test Auto PR (Safari) Extension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		B24897B42F3B1F9E00A313F0 /* Main.html in Resources */ = {isa = PBXBuildFile; fileRef = B24897792F3B1F9E00A313F0 /* Main.html */; };
+		B24897B52F3B1F9E00A313F0 /* Main.html in Resources */ = {isa = PBXBuildFile; fileRef = B24897792F3B1F9E00A313F0 /* Main.html */; };
+		B24897B62F3B1F9E00A313F0 /* Icon.png in Resources */ = {isa = PBXBuildFile; fileRef = B248977B2F3B1F9E00A313F0 /* Icon.png */; };
+		B24897B72F3B1F9E00A313F0 /* Icon.png in Resources */ = {isa = PBXBuildFile; fileRef = B248977B2F3B1F9E00A313F0 /* Icon.png */; };
+		B24897B82F3B1F9E00A313F0 /* Style.css in Resources */ = {isa = PBXBuildFile; fileRef = B248977C2F3B1F9E00A313F0 /* Style.css */; };
+		B24897B92F3B1F9E00A313F0 /* Style.css in Resources */ = {isa = PBXBuildFile; fileRef = B248977C2F3B1F9E00A313F0 /* Style.css */; };
+		B24897BA2F3B1F9E00A313F0 /* Script.js in Resources */ = {isa = PBXBuildFile; fileRef = B248977D2F3B1F9E00A313F0 /* Script.js */; };
+		B24897BB2F3B1F9E00A313F0 /* Script.js in Resources */ = {isa = PBXBuildFile; fileRef = B248977D2F3B1F9E00A313F0 /* Script.js */; };
+		B24897BC2F3B1F9E00A313F0 /* ViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = B248977E2F3B1F9E00A313F0 /* ViewController.swift */; };
+		B24897BD2F3B1F9E00A313F0 /* ViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = B248977E2F3B1F9E00A313F0 /* ViewController.swift */; };
+		B24897BE2F3B1F9E00A313F0 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = B248977F2F3B1F9E00A313F0 /* Assets.xcassets */; };
+		B24897BF2F3B1F9E00A313F0 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = B248977F2F3B1F9E00A313F0 /* Assets.xcassets */; };
+		B24897C02F3B1F9E00A313F0 /* SafariWebExtensionHandler.swift in Sources */ = {isa = PBXBuildFile; fileRef = B24897812F3B1F9E00A313F0 /* SafariWebExtensionHandler.swift */; };
+		B24897C12F3B1F9E00A313F0 /* SafariWebExtensionHandler.swift in Sources */ = {isa = PBXBuildFile; fileRef = B24897812F3B1F9E00A313F0 /* SafariWebExtensionHandler.swift */; };
+		B24897DB2F3B1F9F00A313F0 /* popup.js in Resources */ = {isa = PBXBuildFile; fileRef = B24897D32F3B1F9F00A313F0 /* popup.js */; };
+		B24897DC2F3B1F9F00A313F0 /* background.js in Resources */ = {isa = PBXBuildFile; fileRef = B24897D42F3B1F9F00A313F0 /* background.js */; };
+		B24897DD2F3B1F9F00A313F0 /* popup.html in Resources */ = {isa = PBXBuildFile; fileRef = B24897D52F3B1F9F00A313F0 /* popup.html */; };
+		B24897DE2F3B1F9F00A313F0 /* options.js in Resources */ = {isa = PBXBuildFile; fileRef = B24897D62F3B1F9F00A313F0 /* options.js */; };
+		B24897DF2F3B1F9F00A313F0 /* content in Resources */ = {isa = PBXBuildFile; fileRef = B24897D72F3B1F9F00A313F0 /* content */; };
+		B24897E02F3B1F9F00A313F0 /* README.md in Resources */ = {isa = PBXBuildFile; fileRef = B24897D82F3B1F9F00A313F0 /* README.md */; };
+		B24897E12F3B1F9F00A313F0 /* manifest.json in Resources */ = {isa = PBXBuildFile; fileRef = B24897D92F3B1F9F00A313F0 /* manifest.json */; };
+		B24897E22F3B1F9F00A313F0 /* options.html in Resources */ = {isa = PBXBuildFile; fileRef = B24897DA2F3B1F9F00A313F0 /* options.html */; };
+		B24897E32F3B1F9F00A313F0 /* popup.js in Resources */ = {isa = PBXBuildFile; fileRef = B24897D32F3B1F9F00A313F0 /* popup.js */; };
+		B24897E42F3B1F9F00A313F0 /* background.js in Resources */ = {isa = PBXBuildFile; fileRef = B24897D42F3B1F9F00A313F0 /* background.js */; };
+		B24897E52F3B1F9F00A313F0 /* popup.html in Resources */ = {isa = PBXBuildFile; fileRef = B24897D52F3B1F9F00A313F0 /* popup.html */; };
+		B24897E62F3B1F9F00A313F0 /* options.js in Resources */ = {isa = PBXBuildFile; fileRef = B24897D62F3B1F9F00A313F0 /* options.js */; };
+		B24897E72F3B1F9F00A313F0 /* content in Resources */ = {isa = PBXBuildFile; fileRef = B24897D72F3B1F9F00A313F0 /* content */; };
+		B24897E82F3B1F9F00A313F0 /* README.md in Resources */ = {isa = PBXBuildFile; fileRef = B24897D82F3B1F9F00A313F0 /* README.md */; };
+		B24897E92F3B1F9F00A313F0 /* manifest.json in Resources */ = {isa = PBXBuildFile; fileRef = B24897D92F3B1F9F00A313F0 /* manifest.json */; };
+		B24897EA2F3B1F9F00A313F0 /* options.html in Resources */ = {isa = PBXBuildFile; fileRef = B24897DA2F3B1F9F00A313F0 /* options.html */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		B24897A62F3B1F9E00A313F0 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = B24897732F3B1F9E00A313F0 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = B24897A32F3B1F9E00A313F0;
+			remoteInfo = "Coding Test Auto PR (Safari) Extension (iOS)";
+		};
+		B24897B02F3B1F9E00A313F0 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = B24897732F3B1F9E00A313F0 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = B24897AD2F3B1F9E00A313F0;
+			remoteInfo = "Coding Test Auto PR (Safari) Extension (macOS)";
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		B24897C72F3B1F9E00A313F0 /* Embed Foundation Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				B24897A52F3B1F9E00A313F0 /* Coding Test Auto PR (Safari) Extension.appex in Embed Foundation Extensions */,
+			);
+			name = "Embed Foundation Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		B24897CE2F3B1F9E00A313F0 /* Embed Foundation Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				B24897AF2F3B1F9E00A313F0 /* Coding Test Auto PR (Safari) Extension.appex in Embed Foundation Extensions */,
+			);
+			name = "Embed Foundation Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
+
+/* Begin PBXFileReference section */
+		B248977A2F3B1F9E00A313F0 /* Base */ = {isa = PBXFileReference; lastKnownFileType = text.html; name = Base; path = Base.lproj/Main.html; sourceTree = "<group>"; };
+		B248977B2F3B1F9E00A313F0 /* Icon.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = Icon.png; sourceTree = "<group>"; };
+		B248977C2F3B1F9E00A313F0 /* Style.css */ = {isa = PBXFileReference; lastKnownFileType = text.css; path = Style.css; sourceTree = "<group>"; };
+		B248977D2F3B1F9E00A313F0 /* Script.js */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.javascript; path = Script.js; sourceTree = "<group>"; };
+		B248977E2F3B1F9E00A313F0 /* ViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ViewController.swift; sourceTree = "<group>"; };
+		B248977F2F3B1F9E00A313F0 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		B24897812F3B1F9E00A313F0 /* SafariWebExtensionHandler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SafariWebExtensionHandler.swift; sourceTree = "<group>"; };
+		B24897862F3B1F9E00A313F0 /* Coding Test Auto PR (Safari).app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "Coding Test Auto PR (Safari).app"; sourceTree = BUILT_PRODUCTS_DIR; };
+		B24897892F3B1F9E00A313F0 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
+		B248978B2F3B1F9E00A313F0 /* SceneDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SceneDelegate.swift; sourceTree = "<group>"; };
+		B248978E2F3B1F9E00A313F0 /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; name = Base; path = Base.lproj/LaunchScreen.storyboard; sourceTree = "<group>"; };
+		B24897912F3B1F9E00A313F0 /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; name = Base; path = Base.lproj/Main.storyboard; sourceTree = "<group>"; };
+		B24897932F3B1F9E00A313F0 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		B24897982F3B1F9E00A313F0 /* Coding Test Auto PR (Safari).app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "Coding Test Auto PR (Safari).app"; sourceTree = BUILT_PRODUCTS_DIR; };
+		B248979A2F3B1F9E00A313F0 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
+		B248979D2F3B1F9E00A313F0 /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; name = Base; path = Base.lproj/Main.storyboard; sourceTree = "<group>"; };
+		B248979F2F3B1F9E00A313F0 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		B24897A42F3B1F9E00A313F0 /* Coding Test Auto PR (Safari) Extension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = "Coding Test Auto PR (Safari) Extension.appex"; sourceTree = BUILT_PRODUCTS_DIR; };
+		B24897A92F3B1F9E00A313F0 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		B24897AE2F3B1F9E00A313F0 /* Coding Test Auto PR (Safari) Extension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = "Coding Test Auto PR (Safari) Extension.appex"; sourceTree = BUILT_PRODUCTS_DIR; };
+		B24897B32F3B1F9E00A313F0 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		B24897D32F3B1F9F00A313F0 /* popup.js */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.javascript; name = popup.js; path = "../../../safari-extension/popup.js"; sourceTree = "<group>"; };
+		B24897D42F3B1F9F00A313F0 /* background.js */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.javascript; name = background.js; path = "../../../safari-extension/background.js"; sourceTree = "<group>"; };
+		B24897D52F3B1F9F00A313F0 /* popup.html */ = {isa = PBXFileReference; lastKnownFileType = text.html; name = popup.html; path = "../../../safari-extension/popup.html"; sourceTree = "<group>"; };
+		B24897D62F3B1F9F00A313F0 /* options.js */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.javascript; name = options.js; path = "../../../safari-extension/options.js"; sourceTree = "<group>"; };
+		B24897D72F3B1F9F00A313F0 /* content */ = {isa = PBXFileReference; lastKnownFileType = folder; name = content; path = "../../../safari-extension/content"; sourceTree = "<group>"; };
+		B24897D82F3B1F9F00A313F0 /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; name = README.md; path = "../../../safari-extension/README.md"; sourceTree = "<group>"; };
+		B24897D92F3B1F9F00A313F0 /* manifest.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; name = manifest.json; path = "../../../safari-extension/manifest.json"; sourceTree = "<group>"; };
+		B24897DA2F3B1F9F00A313F0 /* options.html */ = {isa = PBXFileReference; lastKnownFileType = text.html; name = options.html; path = "../../../safari-extension/options.html"; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		B24897832F3B1F9E00A313F0 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		B24897952F3B1F9E00A313F0 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		B24897A12F3B1F9E00A313F0 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		B24897AB2F3B1F9E00A313F0 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		B24897722F3B1F9E00A313F0 = {
+			isa = PBXGroup;
+			children = (
+				B24897772F3B1F9E00A313F0 /* Shared (App) */,
+				B24897802F3B1F9E00A313F0 /* Shared (Extension) */,
+				B24897882F3B1F9E00A313F0 /* iOS (App) */,
+				B24897992F3B1F9E00A313F0 /* macOS (App) */,
+				B24897A82F3B1F9E00A313F0 /* iOS (Extension) */,
+				B24897B22F3B1F9E00A313F0 /* macOS (Extension) */,
+				B24897872F3B1F9E00A313F0 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		B24897772F3B1F9E00A313F0 /* Shared (App) */ = {
+			isa = PBXGroup;
+			children = (
+				B248977E2F3B1F9E00A313F0 /* ViewController.swift */,
+				B248977F2F3B1F9E00A313F0 /* Assets.xcassets */,
+				B24897782F3B1F9E00A313F0 /* Resources */,
+			);
+			path = "Shared (App)";
+			sourceTree = "<group>";
+		};
+		B24897782F3B1F9E00A313F0 /* Resources */ = {
+			isa = PBXGroup;
+			children = (
+				B24897792F3B1F9E00A313F0 /* Main.html */,
+				B248977B2F3B1F9E00A313F0 /* Icon.png */,
+				B248977C2F3B1F9E00A313F0 /* Style.css */,
+				B248977D2F3B1F9E00A313F0 /* Script.js */,
+			);
+			path = Resources;
+			sourceTree = "<group>";
+		};
+		B24897802F3B1F9E00A313F0 /* Shared (Extension) */ = {
+			isa = PBXGroup;
+			children = (
+				B24897D22F3B1F9F00A313F0 /* Resources */,
+				B24897812F3B1F9E00A313F0 /* SafariWebExtensionHandler.swift */,
+			);
+			path = "Shared (Extension)";
+			sourceTree = "<group>";
+		};
+		B24897872F3B1F9E00A313F0 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				B24897862F3B1F9E00A313F0 /* Coding Test Auto PR (Safari).app */,
+				B24897982F3B1F9E00A313F0 /* Coding Test Auto PR (Safari).app */,
+				B24897A42F3B1F9E00A313F0 /* Coding Test Auto PR (Safari) Extension.appex */,
+				B24897AE2F3B1F9E00A313F0 /* Coding Test Auto PR (Safari) Extension.appex */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		B24897882F3B1F9E00A313F0 /* iOS (App) */ = {
+			isa = PBXGroup;
+			children = (
+				B24897892F3B1F9E00A313F0 /* AppDelegate.swift */,
+				B248978B2F3B1F9E00A313F0 /* SceneDelegate.swift */,
+				B248978D2F3B1F9E00A313F0 /* LaunchScreen.storyboard */,
+				B24897902F3B1F9E00A313F0 /* Main.storyboard */,
+				B24897932F3B1F9E00A313F0 /* Info.plist */,
+			);
+			path = "iOS (App)";
+			sourceTree = "<group>";
+		};
+		B24897992F3B1F9E00A313F0 /* macOS (App) */ = {
+			isa = PBXGroup;
+			children = (
+				B248979A2F3B1F9E00A313F0 /* AppDelegate.swift */,
+				B248979C2F3B1F9E00A313F0 /* Main.storyboard */,
+				B248979F2F3B1F9E00A313F0 /* Info.plist */,
+			);
+			path = "macOS (App)";
+			sourceTree = "<group>";
+		};
+		B24897A82F3B1F9E00A313F0 /* iOS (Extension) */ = {
+			isa = PBXGroup;
+			children = (
+				B24897A92F3B1F9E00A313F0 /* Info.plist */,
+			);
+			path = "iOS (Extension)";
+			sourceTree = "<group>";
+		};
+		B24897B22F3B1F9E00A313F0 /* macOS (Extension) */ = {
+			isa = PBXGroup;
+			children = (
+				B24897B32F3B1F9E00A313F0 /* Info.plist */,
+			);
+			path = "macOS (Extension)";
+			sourceTree = "<group>";
+		};
+		B24897D22F3B1F9F00A313F0 /* Resources */ = {
+			isa = PBXGroup;
+			children = (
+				B24897D32F3B1F9F00A313F0 /* popup.js */,
+				B24897D42F3B1F9F00A313F0 /* background.js */,
+				B24897D52F3B1F9F00A313F0 /* popup.html */,
+				B24897D62F3B1F9F00A313F0 /* options.js */,
+				B24897D72F3B1F9F00A313F0 /* content */,
+				B24897D82F3B1F9F00A313F0 /* README.md */,
+				B24897D92F3B1F9F00A313F0 /* manifest.json */,
+				B24897DA2F3B1F9F00A313F0 /* options.html */,
+			);
+			name = Resources;
+			path = "Shared (Extension)";
+			sourceTree = SOURCE_ROOT;
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		B24897852F3B1F9E00A313F0 /* Coding Test Auto PR (Safari) (iOS) */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = B24897C82F3B1F9E00A313F0 /* Build configuration list for PBXNativeTarget "Coding Test Auto PR (Safari) (iOS)" */;
+			buildPhases = (
+				B24897822F3B1F9E00A313F0 /* Sources */,
+				B24897832F3B1F9E00A313F0 /* Frameworks */,
+				B24897842F3B1F9E00A313F0 /* Resources */,
+				B24897C72F3B1F9E00A313F0 /* Embed Foundation Extensions */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				B24897A72F3B1F9E00A313F0 /* PBXTargetDependency */,
+			);
+			name = "Coding Test Auto PR (Safari) (iOS)";
+			packageProductDependencies = (
+			);
+			productName = "Coding Test Auto PR (Safari) (iOS)";
+			productReference = B24897862F3B1F9E00A313F0 /* Coding Test Auto PR (Safari).app */;
+			productType = "com.apple.product-type.application";
+		};
+		B24897972F3B1F9E00A313F0 /* Coding Test Auto PR (Safari) (macOS) */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = B24897CF2F3B1F9E00A313F0 /* Build configuration list for PBXNativeTarget "Coding Test Auto PR (Safari) (macOS)" */;
+			buildPhases = (
+				B24897942F3B1F9E00A313F0 /* Sources */,
+				B24897952F3B1F9E00A313F0 /* Frameworks */,
+				B24897962F3B1F9E00A313F0 /* Resources */,
+				B24897CE2F3B1F9E00A313F0 /* Embed Foundation Extensions */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				B24897B12F3B1F9E00A313F0 /* PBXTargetDependency */,
+			);
+			name = "Coding Test Auto PR (Safari) (macOS)";
+			packageProductDependencies = (
+			);
+			productName = "Coding Test Auto PR (Safari) (macOS)";
+			productReference = B24897982F3B1F9E00A313F0 /* Coding Test Auto PR (Safari).app */;
+			productType = "com.apple.product-type.application";
+		};
+		B24897A32F3B1F9E00A313F0 /* Coding Test Auto PR (Safari) Extension (iOS) */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = B24897C42F3B1F9E00A313F0 /* Build configuration list for PBXNativeTarget "Coding Test Auto PR (Safari) Extension (iOS)" */;
+			buildPhases = (
+				B24897A02F3B1F9E00A313F0 /* Sources */,
+				B24897A12F3B1F9E00A313F0 /* Frameworks */,
+				B24897A22F3B1F9E00A313F0 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = "Coding Test Auto PR (Safari) Extension (iOS)";
+			packageProductDependencies = (
+			);
+			productName = "Coding Test Auto PR (Safari) Extension (iOS)";
+			productReference = B24897A42F3B1F9E00A313F0 /* Coding Test Auto PR (Safari) Extension.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
+		B24897AD2F3B1F9E00A313F0 /* Coding Test Auto PR (Safari) Extension (macOS) */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = B24897CB2F3B1F9E00A313F0 /* Build configuration list for PBXNativeTarget "Coding Test Auto PR (Safari) Extension (macOS)" */;
+			buildPhases = (
+				B24897AA2F3B1F9E00A313F0 /* Sources */,
+				B24897AB2F3B1F9E00A313F0 /* Frameworks */,
+				B24897AC2F3B1F9E00A313F0 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = "Coding Test Auto PR (Safari) Extension (macOS)";
+			packageProductDependencies = (
+			);
+			productName = "Coding Test Auto PR (Safari) Extension (macOS)";
+			productReference = B24897AE2F3B1F9E00A313F0 /* Coding Test Auto PR (Safari) Extension.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		B24897732F3B1F9E00A313F0 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = 1;
+				LastSwiftUpdateCheck = 2620;
+				LastUpgradeCheck = 2620;
+				TargetAttributes = {
+					B24897852F3B1F9E00A313F0 = {
+						CreatedOnToolsVersion = 26.2;
+					};
+					B24897972F3B1F9E00A313F0 = {
+						CreatedOnToolsVersion = 26.2;
+					};
+					B24897A32F3B1F9E00A313F0 = {
+						CreatedOnToolsVersion = 26.2;
+					};
+					B24897AD2F3B1F9E00A313F0 = {
+						CreatedOnToolsVersion = 26.2;
+					};
+				};
+			};
+			buildConfigurationList = B24897762F3B1F9E00A313F0 /* Build configuration list for PBXProject "Coding Test Auto PR (Safari)" */;
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+				Base,
+			);
+			mainGroup = B24897722F3B1F9E00A313F0;
+			minimizedProjectReferenceProxies = 1;
+			preferredProjectObjectVersion = 77;
+			productRefGroup = B24897872F3B1F9E00A313F0 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				B24897852F3B1F9E00A313F0 /* Coding Test Auto PR (Safari) (iOS) */,
+				B24897972F3B1F9E00A313F0 /* Coding Test Auto PR (Safari) (macOS) */,
+				B24897A32F3B1F9E00A313F0 /* Coding Test Auto PR (Safari) Extension (iOS) */,
+				B24897AD2F3B1F9E00A313F0 /* Coding Test Auto PR (Safari) Extension (macOS) */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		B24897842F3B1F9E00A313F0 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				B24897B62F3B1F9E00A313F0 /* Icon.png in Resources */,
+				B248978F2F3B1F9E00A313F0 /* LaunchScreen.storyboard in Resources */,
+				B24897B42F3B1F9E00A313F0 /* Main.html in Resources */,
+				B24897BA2F3B1F9E00A313F0 /* Script.js in Resources */,
+				B24897BE2F3B1F9E00A313F0 /* Assets.xcassets in Resources */,
+				B24897922F3B1F9E00A313F0 /* Main.storyboard in Resources */,
+				B24897B82F3B1F9E00A313F0 /* Style.css in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		B24897962F3B1F9E00A313F0 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				B24897B72F3B1F9E00A313F0 /* Icon.png in Resources */,
+				B24897B92F3B1F9E00A313F0 /* Style.css in Resources */,
+				B248979E2F3B1F9E00A313F0 /* Main.storyboard in Resources */,
+				B24897BB2F3B1F9E00A313F0 /* Script.js in Resources */,
+				B24897BF2F3B1F9E00A313F0 /* Assets.xcassets in Resources */,
+				B24897B52F3B1F9E00A313F0 /* Main.html in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		B24897A22F3B1F9E00A313F0 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				B24897E82F3B1F9F00A313F0 /* README.md in Resources */,
+				B24897E92F3B1F9F00A313F0 /* manifest.json in Resources */,
+				B24897E42F3B1F9F00A313F0 /* background.js in Resources */,
+				B24897EA2F3B1F9F00A313F0 /* options.html in Resources */,
+				B24897E62F3B1F9F00A313F0 /* options.js in Resources */,
+				B24897E52F3B1F9F00A313F0 /* popup.html in Resources */,
+				B24897E32F3B1F9F00A313F0 /* popup.js in Resources */,
+				B24897E72F3B1F9F00A313F0 /* content in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		B24897AC2F3B1F9E00A313F0 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				B24897E02F3B1F9F00A313F0 /* README.md in Resources */,
+				B24897E12F3B1F9F00A313F0 /* manifest.json in Resources */,
+				B24897DC2F3B1F9F00A313F0 /* background.js in Resources */,
+				B24897E22F3B1F9F00A313F0 /* options.html in Resources */,
+				B24897DE2F3B1F9F00A313F0 /* options.js in Resources */,
+				B24897DD2F3B1F9F00A313F0 /* popup.html in Resources */,
+				B24897DB2F3B1F9F00A313F0 /* popup.js in Resources */,
+				B24897DF2F3B1F9F00A313F0 /* content in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		B24897822F3B1F9E00A313F0 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				B24897BC2F3B1F9E00A313F0 /* ViewController.swift in Sources */,
+				B248978A2F3B1F9E00A313F0 /* AppDelegate.swift in Sources */,
+				B248978C2F3B1F9E00A313F0 /* SceneDelegate.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		B24897942F3B1F9E00A313F0 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				B24897BD2F3B1F9E00A313F0 /* ViewController.swift in Sources */,
+				B248979B2F3B1F9E00A313F0 /* AppDelegate.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		B24897A02F3B1F9E00A313F0 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				B24897C02F3B1F9E00A313F0 /* SafariWebExtensionHandler.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		B24897AA2F3B1F9E00A313F0 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				B24897C12F3B1F9E00A313F0 /* SafariWebExtensionHandler.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		B24897A72F3B1F9E00A313F0 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = B24897A32F3B1F9E00A313F0 /* Coding Test Auto PR (Safari) Extension (iOS) */;
+			targetProxy = B24897A62F3B1F9E00A313F0 /* PBXContainerItemProxy */;
+		};
+		B24897B12F3B1F9E00A313F0 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = B24897AD2F3B1F9E00A313F0 /* Coding Test Auto PR (Safari) Extension (macOS) */;
+			targetProxy = B24897B02F3B1F9E00A313F0 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
+/* Begin PBXVariantGroup section */
+		B24897792F3B1F9E00A313F0 /* Main.html */ = {
+			isa = PBXVariantGroup;
+			children = (
+				B248977A2F3B1F9E00A313F0 /* Base */,
+			);
+			name = Main.html;
+			sourceTree = "<group>";
+		};
+		B248978D2F3B1F9E00A313F0 /* LaunchScreen.storyboard */ = {
+			isa = PBXVariantGroup;
+			children = (
+				B248978E2F3B1F9E00A313F0 /* Base */,
+			);
+			name = LaunchScreen.storyboard;
+			sourceTree = "<group>";
+		};
+		B24897902F3B1F9E00A313F0 /* Main.storyboard */ = {
+			isa = PBXVariantGroup;
+			children = (
+				B24897912F3B1F9E00A313F0 /* Base */,
+			);
+			name = Main.storyboard;
+			sourceTree = "<group>";
+		};
+		B248979C2F3B1F9E00A313F0 /* Main.storyboard */ = {
+			isa = PBXVariantGroup;
+			children = (
+				B248979D2F3B1F9E00A313F0 /* Base */,
+			);
+			name = Main.storyboard;
+			sourceTree = "<group>";
+		};
+/* End PBXVariantGroup section */
+
+/* Begin XCBuildConfiguration section */
+		B24897C22F3B1F9E00A313F0 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"DEBUG=1",
+					"$(inherited)",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+			};
+			name = Debug;
+		};
+		B24897C32F3B1F9E00A313F0 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				SWIFT_COMPILATION_MODE = wholemodule;
+			};
+			name = Release;
+		};
+		B24897C52F3B1F9E00A313F0 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = "iOS (Extension)/Info.plist";
+				INFOPLIST_KEY_CFBundleDisplayName = "Coding Test Auto PR (Safari) Extension";
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				OTHER_LDFLAGS = (
+					"-framework",
+					SafariServices,
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = "com.yourCompany.Coding-Test-Auto-PR--Safari-.Extension";
+				PRODUCT_NAME = "Coding Test Auto PR (Safari) Extension";
+				SDKROOT = iphoneos;
+				SKIP_INSTALL = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		B24897C62F3B1F9E00A313F0 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = "iOS (Extension)/Info.plist";
+				INFOPLIST_KEY_CFBundleDisplayName = "Coding Test Auto PR (Safari) Extension";
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				OTHER_LDFLAGS = (
+					"-framework",
+					SafariServices,
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = "com.yourCompany.Coding-Test-Auto-PR--Safari-.Extension";
+				PRODUCT_NAME = "Coding Test Auto PR (Safari) Extension";
+				SDKROOT = iphoneos;
+				SKIP_INSTALL = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				VALIDATE_PRODUCT = YES;
+			};
+			name = Release;
+		};
+		B24897C92F3B1F9E00A313F0 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = "iOS (App)/Info.plist";
+				INFOPLIST_KEY_CFBundleDisplayName = "Coding Test Auto PR (Safari)";
+				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				INFOPLIST_KEY_UILaunchStoryboardName = LaunchScreen;
+				INFOPLIST_KEY_UIMainStoryboardFile = Main;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				OTHER_LDFLAGS = (
+					"-framework",
+					SafariServices,
+					"-framework",
+					WebKit,
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = "com.yourCompany.Coding-Test-Auto-PR--Safari-";
+				PRODUCT_NAME = "Coding Test Auto PR (Safari)";
+				SDKROOT = iphoneos;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		B24897CA2F3B1F9E00A313F0 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = "iOS (App)/Info.plist";
+				INFOPLIST_KEY_CFBundleDisplayName = "Coding Test Auto PR (Safari)";
+				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				INFOPLIST_KEY_UILaunchStoryboardName = LaunchScreen;
+				INFOPLIST_KEY_UIMainStoryboardFile = Main;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				OTHER_LDFLAGS = (
+					"-framework",
+					SafariServices,
+					"-framework",
+					WebKit,
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = "com.yourCompany.Coding-Test-Auto-PR--Safari-";
+				PRODUCT_NAME = "Coding Test Auto PR (Safari)";
+				SDKROOT = iphoneos;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				VALIDATE_PRODUCT = YES;
+			};
+			name = Release;
+		};
+		B24897CC2F3B1F9E00A313F0 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				ENABLE_APP_SANDBOX = YES;
+				ENABLE_HARDENED_RUNTIME = YES;
+				ENABLE_USER_SELECTED_FILES = readonly;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = "macOS (Extension)/Info.plist";
+				INFOPLIST_KEY_CFBundleDisplayName = "Coding Test Auto PR (Safari) Extension";
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+					"@executable_path/../../../../Frameworks",
+				);
+				MACOSX_DEPLOYMENT_TARGET = 10.14;
+				MARKETING_VERSION = 1.0;
+				OTHER_LDFLAGS = (
+					"-framework",
+					SafariServices,
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = "com.yourCompany.Coding-Test-Auto-PR--Safari-.Extension";
+				PRODUCT_NAME = "Coding Test Auto PR (Safari) Extension";
+				SDKROOT = macosx;
+				SKIP_INSTALL = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+			};
+			name = Debug;
+		};
+		B24897CD2F3B1F9E00A313F0 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				ENABLE_APP_SANDBOX = YES;
+				ENABLE_HARDENED_RUNTIME = YES;
+				ENABLE_USER_SELECTED_FILES = readonly;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = "macOS (Extension)/Info.plist";
+				INFOPLIST_KEY_CFBundleDisplayName = "Coding Test Auto PR (Safari) Extension";
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+					"@executable_path/../../../../Frameworks",
+				);
+				MACOSX_DEPLOYMENT_TARGET = 10.14;
+				MARKETING_VERSION = 1.0;
+				OTHER_LDFLAGS = (
+					"-framework",
+					SafariServices,
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = "com.yourCompany.Coding-Test-Auto-PR--Safari-.Extension";
+				PRODUCT_NAME = "Coding Test Auto PR (Safari) Extension";
+				SDKROOT = macosx;
+				SKIP_INSTALL = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+			};
+			name = Release;
+		};
+		B24897D02F3B1F9E00A313F0 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				ENABLE_APP_SANDBOX = YES;
+				ENABLE_HARDENED_RUNTIME = YES;
+				ENABLE_OUTGOING_NETWORK_CONNECTIONS = YES;
+				ENABLE_USER_SELECTED_FILES = readonly;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = "macOS (App)/Info.plist";
+				INFOPLIST_KEY_CFBundleDisplayName = "Coding Test Auto PR (Safari)";
+				INFOPLIST_KEY_NSMainStoryboardFile = Main;
+				INFOPLIST_KEY_NSPrincipalClass = NSApplication;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				MACOSX_DEPLOYMENT_TARGET = 10.14;
+				MARKETING_VERSION = 1.0;
+				OTHER_LDFLAGS = (
+					"-framework",
+					SafariServices,
+					"-framework",
+					WebKit,
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = "com.yourCompany.Coding-Test-Auto-PR--Safari-";
+				PRODUCT_NAME = "Coding Test Auto PR (Safari)";
+				REGISTER_APP_GROUPS = YES;
+				SDKROOT = macosx;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+			};
+			name = Debug;
+		};
+		B24897D12F3B1F9E00A313F0 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				ENABLE_APP_SANDBOX = YES;
+				ENABLE_HARDENED_RUNTIME = YES;
+				ENABLE_OUTGOING_NETWORK_CONNECTIONS = YES;
+				ENABLE_USER_SELECTED_FILES = readonly;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = "macOS (App)/Info.plist";
+				INFOPLIST_KEY_CFBundleDisplayName = "Coding Test Auto PR (Safari)";
+				INFOPLIST_KEY_NSMainStoryboardFile = Main;
+				INFOPLIST_KEY_NSPrincipalClass = NSApplication;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				MACOSX_DEPLOYMENT_TARGET = 10.14;
+				MARKETING_VERSION = 1.0;
+				OTHER_LDFLAGS = (
+					"-framework",
+					SafariServices,
+					"-framework",
+					WebKit,
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = "com.yourCompany.Coding-Test-Auto-PR--Safari-";
+				PRODUCT_NAME = "Coding Test Auto PR (Safari)";
+				REGISTER_APP_GROUPS = YES;
+				SDKROOT = macosx;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		B24897762F3B1F9E00A313F0 /* Build configuration list for PBXProject "Coding Test Auto PR (Safari)" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				B24897C22F3B1F9E00A313F0 /* Debug */,
+				B24897C32F3B1F9E00A313F0 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		B24897C42F3B1F9E00A313F0 /* Build configuration list for PBXNativeTarget "Coding Test Auto PR (Safari) Extension (iOS)" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				B24897C52F3B1F9E00A313F0 /* Debug */,
+				B24897C62F3B1F9E00A313F0 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		B24897C82F3B1F9E00A313F0 /* Build configuration list for PBXNativeTarget "Coding Test Auto PR (Safari) (iOS)" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				B24897C92F3B1F9E00A313F0 /* Debug */,
+				B24897CA2F3B1F9E00A313F0 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		B24897CB2F3B1F9E00A313F0 /* Build configuration list for PBXNativeTarget "Coding Test Auto PR (Safari) Extension (macOS)" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				B24897CC2F3B1F9E00A313F0 /* Debug */,
+				B24897CD2F3B1F9E00A313F0 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		B24897CF2F3B1F9E00A313F0 /* Build configuration list for PBXNativeTarget "Coding Test Auto PR (Safari) (macOS)" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				B24897D02F3B1F9E00A313F0 /* Debug */,
+				B24897D12F3B1F9E00A313F0 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = B24897732F3B1F9E00A313F0 /* Project object */;
+}

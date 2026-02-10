@@ -31,10 +31,6 @@ export interface InlineReviewResult {
   validComments: InlineReviewComment[];
 }
 
-function isGeneratedProblemJavaFile(path: string): boolean {
-  return /^[^/]+\/문제\.java$/.test(path);
-}
-
 async function upsertIssueComment(
   octokit: OctokitClient,
   owner: string,
@@ -281,7 +277,6 @@ export async function loadChangedFilesForReview(
 
   const codeFiles = files
     .filter((file) => file.status !== "removed")
-    .filter((file) => !isGeneratedProblemJavaFile(file.filename))
     .filter((file) => /\.(java|kt|py|cpp|c|js|ts|go|rs)$/.test(file.filename))
     .slice(0, maxFiles);
 
@@ -322,7 +317,6 @@ export async function loadPrimaryJavaCode(context: PullRequestContext): Promise<
 
   const javaFile = files.find((file) => file.status !== "removed" && file.filename.endsWith(".java"));
   if (!javaFile) return null;
-  if (isGeneratedProblemJavaFile(javaFile.filename)) return null;
 
   return getTextFileContent(context.octokit, owner, repo, ref, javaFile.filename);
 }
