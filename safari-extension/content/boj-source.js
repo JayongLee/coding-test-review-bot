@@ -3,6 +3,8 @@ const TRIGGER_MESSAGE = "CT_TRIGGER_SUBMISSION";
 
 let autoTriggered = false;
 
+console.log("[CT-EXT][BOJ] content loaded", { url: location.href });
+
 function normalizeText(value) {
   return (value || "").replace(/\s+/g, " ").trim();
 }
@@ -127,11 +129,17 @@ function sendToBackground(payload, source) {
 }
 
 async function submitFromPage(source) {
+  console.log("[CT-EXT][BOJ] submitFromPage", { source });
   const payload = await collectSubmission();
   if (!payload) {
+    console.warn("[CT-EXT][BOJ] payload missing");
     return { ok: false, message: "정답 제출 데이터가 없거나 아직 채점 완료 전입니다." };
   }
 
+  console.log("[CT-EXT][BOJ] payload prepared", {
+    problemNumber: payload.problemNumber,
+    language: payload.language
+  });
   return sendToBackground(payload, source);
 }
 
@@ -139,12 +147,14 @@ async function autoSubmitIfPossible() {
   if (autoTriggered) return;
   if (!isAccepted()) return;
 
+  console.log("[CT-EXT][BOJ] accepted detected, auto submit");
   autoTriggered = true;
   await submitFromPage("boj-auto");
 }
 
 chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
   if (!message || message.type !== TRIGGER_MESSAGE) return false;
+  console.log("[CT-EXT][BOJ] manual trigger received");
 
   submitFromPage("boj-manual")
     .then((result) => sendResponse(result))

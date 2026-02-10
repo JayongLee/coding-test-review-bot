@@ -3,6 +3,8 @@ const TRIGGER_MESSAGE = "CT_TRIGGER_SUBMISSION";
 
 let lastAutoKey = "";
 
+console.log("[CT-EXT][PGM] content loaded", { url: location.href });
+
 function normalizeText(value) {
   return (value || "").replace(/\s+/g, " ").trim();
 }
@@ -105,15 +107,22 @@ function sendToBackground(payload, source) {
 }
 
 async function submitFromPage(source) {
+  console.log("[CT-EXT][PGM] submitFromPage", { source });
   const payload = await collectSubmission();
   if (!payload) {
+    console.warn("[CT-EXT][PGM] accepted signal not found");
     return { ok: false, message: "정답 판정을 감지하지 못했습니다." };
   }
 
   if (payload.missingCode) {
+    console.warn("[CT-EXT][PGM] missing code in editor");
     return { ok: false, message: payload.message };
   }
 
+  console.log("[CT-EXT][PGM] payload prepared", {
+    problemNumber: payload.problemNumber,
+    language: payload.language
+  });
   return sendToBackground(payload, source);
 }
 
@@ -124,12 +133,14 @@ async function tryAutoSubmit() {
   const key = `${payload.externalSubmissionId}`;
   if (!key || key === lastAutoKey) return;
 
+  console.log("[CT-EXT][PGM] accepted detected, auto submit", { key });
   lastAutoKey = key;
   await sendToBackground(payload, "programmers-auto");
 }
 
 chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
   if (!message || message.type !== TRIGGER_MESSAGE) return false;
+  console.log("[CT-EXT][PGM] manual trigger received");
 
   submitFromPage("programmers-manual")
     .then((result) => sendResponse(result))

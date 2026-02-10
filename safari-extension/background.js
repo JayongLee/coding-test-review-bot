@@ -2,6 +2,8 @@ const STORAGE_CONFIG_KEY = "ct_auto_pr_config";
 const STORAGE_PROCESSED_KEY = "ct_auto_pr_processed";
 const MESSAGE_SUBMISSION = "CT_SUBMISSION_ACCEPTED";
 
+console.log("[CT-EXT][background] loaded");
+
 function getStorageArea() {
   return chrome.storage.sync || chrome.storage.local;
 }
@@ -85,9 +87,11 @@ async function isProcessed(key) {
 }
 
 async function submitToBackend(rawPayload, source) {
+  console.log("[CT-EXT][background] submitToBackend called", { source, site: rawPayload?.site });
   const config = (await storageGet(STORAGE_CONFIG_KEY)) || {};
   const configError = validateConfig(config);
   if (configError) {
+    console.warn("[CT-EXT][background] invalid config", { configError });
     return { ok: false, message: configError };
   }
 
@@ -120,11 +124,17 @@ async function submitToBackend(rawPayload, source) {
 
   const dedupeKey = makeSubmissionKey(payload);
   if (await isProcessed(dedupeKey)) {
+    console.log("[CT-EXT][background] duplicate submission skipped", { dedupeKey });
     return { ok: true, skipped: true, message: "이미 처리한 제출입니다." };
   }
 
   let response;
   try {
+    console.log("[CT-EXT][background] calling API", {
+      endpoint: normalizeText(config.apiEndpoint),
+      site: payload.site,
+      problemNumber: payload.problemNumber
+    });
     response = await fetch(normalizeText(config.apiEndpoint), {
       method: "POST",
       headers: {
@@ -148,12 +158,20 @@ async function submitToBackend(rawPayload, source) {
   }
 
   if (!response.ok || body.ok === false) {
+    console.error("[CT-EXT][background] API error", {
+      status: response.status,
+      body
+    });
     return {
       ok: false,
       message: body.message || `API 오류: HTTP ${response.status}`
     };
   }
 
+  console.log("[CT-EXT][background] API success", {
+    pullRequestUrl: body.pullRequestUrl,
+    pullRequestNumber: body.pullRequestNumber
+  });
   await markProcessed(dedupeKey, body.pullRequestUrl || "");
   return {
     ok: true,
@@ -168,8 +186,14 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
     return false;
   }
 
+  console.log("[CT-EXT][background] message received", {
+    type: message.type,
+    source: message.source
+  });
+
   submitToBackend(message.payload || {}, message.source || "unknown")
     .then((result) => {
+      console.log("[CT-EXT][background] result", result);
       if (result.ok && !result.skipped) {
         notify("Coding Test Auto PR", `PR 생성 완료: ${result.pullRequestUrl || "링크 확인"}`);
       } else if (!result.ok) {
@@ -179,6 +203,7 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
     })
     .catch((error) => {
       const messageText = error instanceof Error ? error.message : String(error);
+      console.error("[CT-EXT][background] unhandled error", error);
       notify("Coding Test Auto PR", `실패: ${messageText}`);
       sendResponse({ ok: false, message: messageText });
     });
