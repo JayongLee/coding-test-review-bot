@@ -144,10 +144,26 @@ async function submitToBackend(rawPayload, source) {
       body: JSON.stringify(payload)
     });
   } catch (error) {
-    return {
-      ok: false,
-      message: `API 호출 실패: ${error instanceof Error ? error.message : String(error)}`
-    };
+    const primaryMessage = error instanceof Error ? error.message : String(error);
+    console.warn("[CT-EXT][background] primary fetch failed, trying fallback", {
+      message: primaryMessage
+    });
+
+    try {
+      response = await fetch(normalizeText(config.apiEndpoint), {
+        method: "POST",
+        body: JSON.stringify({
+          ...payload,
+          extensionApiToken: normalizeText(config.apiToken)
+        })
+      });
+    } catch (fallbackError) {
+      const fallbackMessage = fallbackError instanceof Error ? fallbackError.message : String(fallbackError);
+      return {
+        ok: false,
+        message: `API 호출 실패: ${fallbackMessage}`
+      };
+    }
   }
 
   let body;

@@ -2,6 +2,9 @@ const MESSAGE_SUBMISSION = "CT_SUBMISSION_ACCEPTED";
 const TRIGGER_MESSAGE = "CT_TRIGGER_SUBMISSION";
 
 let autoTriggered = false;
+let autoRetryCount = 0;
+const AUTO_MAX_RETRY = 8;
+const AUTO_RETRY_DELAY_MS = 1200;
 
 console.log("[CT-EXT][BOJ] content loaded", { url: location.href });
 
@@ -29,22 +32,23 @@ function parseSubmissionId() {
 }
 
 function parseProblemNumber() {
-  const problemLink = document.querySelector('a[href^="/problem/"]');
-  if (!problemLink) return "";
+  const anchors = Array.from(document.querySelectorAll("a[href]"));
+  for (const anchor of anchors) {
+    const href = anchor.getAttribute("href") || "";
+    const match = href.match(/\/problem\/(\d+)/);
+    if (match) return match[1];
+  }
 
-  const href = problemLink.getAttribute("href") || "";
-  const match = href.match(/\/problem\/(\d+)/);
-  if (!match) return "";
-  return match[1];
+  const html = document.documentElement?.innerHTML || "";
+  const htmlMatch = html.match(/\/problem\/(\d+)/);
+  return htmlMatch ? htmlMatch[1] : "";
 }
 
 function isAccepted() {
   if (document.querySelector(".result-ac")) return true;
 
   const statusText =
-    findTableValue(["결과", "result"]) ||
-    normalizeText(document.querySelector("td.result")?.textContent) ||
-    normalizeText(document.body.textContent);
+    findTableValue(["결과", "result"]) || normalizeText(document.querySelector("td.result")?.textContent);
 
   return /맞았습니다|accepted/i.test(statusText);
 }
@@ -77,27 +81,55 @@ function parseLanguage() {
   return fromTable;
 }
 
-function parseSourceCode() {
-  const sourceArea = document.querySelector("textarea#source");
-  if (sourceArea && typeof sourceArea.value === "string") {
-    return sourceArea.value;
+async function fetchCodeFromDownload(submissionId) {
+  if (!submissionId) return "";
+  try {
+    const response = await fetch(`/source/download/${submissionId}`, { credentials: "include" });
+    if (!response.ok) return "";
+    const text = await response.text();
+    return text.replace(/\r/g, "").trim();
+  } catch {
+    return "";
   }
-
-  const sourcePre = document.querySelector("pre#source");
-  return normalizeText(sourcePre?.textContent);
 }
 
-async function collectSubmission() {
-  if (!isAccepted()) {
+async function parseSourceCode() {
+  const sourceArea = document.querySelector("textarea#source, textarea[name='source']");
+  if (sourceArea && typeof sourceArea.value === "string") {
+    const value = sourceArea.value.trim();
+    if (value) return value;
+  }
+
+  const sourcePre = document.querySelector("pre#source, #source pre, .CodeMirror-code");
+  const preText = (sourcePre?.textContent || "").replace(/\r/g, "").trim();
+  if (preText) return preText;
+
+  const submissionId = parseSubmissionId();
+  const downloaded = await fetchCodeFromDownload(submissionId);
+  if (downloaded) return downloaded;
+
+  return "";
+}
+
+async function collectSubmission(options = {}) {
+  const requireAccepted = options.requireAccepted !== false;
+  if (requireAccepted && !isAccepted()) {
+    console.log("[CT-EXT][BOJ] collectSubmission skipped: not accepted yet");
     return null;
   }
 
   const problemNumber = parseProblemNumber();
-  if (!problemNumber) return null;
+  if (!problemNumber) {
+    console.warn("[CT-EXT][BOJ] collectSubmission failed: problem number not found");
+    return null;
+  }
 
   const problemTitle = (await fetchProblemTitle(problemNumber)) || `problem-${problemNumber}`;
-  const sourceCode = parseSourceCode();
-  if (!sourceCode) return null;
+  const sourceCode = await parseSourceCode();
+  if (!sourceCode) {
+    console.warn("[CT-EXT][BOJ] collectSubmission failed: source code not found");
+    return null;
+  }
 
   return {
     site: "BOJ",
@@ -130,7 +162,9 @@ function sendToBackground(payload, source) {
 
 async function submitFromPage(source) {
   console.log("[CT-EXT][BOJ] submitFromPage", { source });
-  const payload = await collectSubmission();
+  const payload = await collectSubmission({
+    requireAccepted: source !== "boj-manual"
+  });
   if (!payload) {
     console.warn("[CT-EXT][BOJ] payload missing");
     return { ok: false, message: "정답 제출 데이터가 없거나 아직 채점 완료 전입니다." };
@@ -148,8 +182,28 @@ async function autoSubmitIfPossible() {
   if (!isAccepted()) return;
 
   console.log("[CT-EXT][BOJ] accepted detected, auto submit");
-  autoTriggered = true;
-  await submitFromPage("boj-auto");
+  const result = await submitFromPage("boj-auto");
+
+  if (result?.ok) {
+    autoTriggered = true;
+    return;
+  }
+
+  autoRetryCount += 1;
+  if (autoRetryCount <= AUTO_MAX_RETRY) {
+    console.warn("[CT-EXT][BOJ] auto submit failed, retry scheduled", {
+      attempt: autoRetryCount,
+      message: result?.message
+    });
+    setTimeout(() => {
+      void autoSubmitIfPossible();
+    }, AUTO_RETRY_DELAY_MS);
+    return;
+  }
+
+  console.warn("[CT-EXT][BOJ] auto submit stopped after max retries", {
+    message: result?.message
+  });
 }
 
 chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {

@@ -38,6 +38,7 @@ interface SubmissionRequest {
   solutionSummary?: string;
   notes?: string;
   externalSubmissionId?: string;
+  extensionApiToken?: string;
 }
 
 interface SubmissionInput {
@@ -434,7 +435,7 @@ async function createSubmissionPullRequest(input: SubmissionInput): Promise<{ ur
   }
 }
 
-function isAuthorized(event: HttpEventLike): boolean {
+function isAuthorized(event: HttpEventLike, requestBody?: SubmissionRequest): boolean {
   const expected = optionalEnv("EXTENSION_API_TOKEN");
   if (!expected) {
     throw new Error("EXTENSION_API_TOKEN is required");
@@ -444,9 +445,10 @@ function isAuthorized(event: HttpEventLike): boolean {
   if (!header) return false;
 
   const match = header.match(/^Bearer\s+(.+)$/i);
-  if (!match) return false;
+  if (match && match[1] === expected) return true;
 
-  return match[1] === expected;
+  const tokenFromBody = requestBody?.extensionApiToken?.trim();
+  return Boolean(tokenFromBody && tokenFromBody === expected);
 }
 
 export async function handler(event: HttpEventLike): Promise<HttpResponseLike> {
@@ -464,11 +466,11 @@ export async function handler(event: HttpEventLike): Promise<HttpResponseLike> {
   }
 
   try {
-    if (!isAuthorized(event)) {
+    const request = parseBody(event);
+    if (!isAuthorized(event, request)) {
       return jsonResponse(401, { message: "Unauthorized" });
     }
 
-    const request = parseBody(event);
     const input = validateSubmission(request);
     const result = await createSubmissionPullRequest(input);
 
