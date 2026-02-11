@@ -1,0 +1,415 @@
+const MESSAGE_SUBMISSION = "CT_SUBMISSION_ACCEPTED";
+const STORAGE_CONFIG_KEY = "ct_pr_config";
+const STORAGE_PROCESSED_KEY = "ct_pr_processed";
+
+const GITHUB_API_BASE = "https://api.github.com";
+
+function getStorageArea() {
+  return chrome.storage.sync || chrome.storage.local;
+}
+
+function storageGet(key) {
+  return new Promise((resolve) => {
+    getStorageArea().get([key], (result) => resolve(result[key]));
+  });
+}
+
+function storageSet(values) {
+  return new Promise((resolve) => {
+    getStorageArea().set(values, () => resolve());
+  });
+}
+
+function normalizeText(value, fallback = "") {
+  if (value === undefined || value === null) return fallback;
+  const text = String(value).trim();
+  return text || fallback;
+}
+
+function sanitizeTitleForPath(raw) {
+  return normalizeText(raw)
+    .replace(/[\\/:*?"<>|]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, 80);
+}
+
+function sanitizeBranchPart(raw, fallback) {
+  const sanitized = normalizeText(raw)
+    .toLowerCase()
+    .replace(/[^a-z0-9._/-]+/g, "-")
+    .replace(/-+/g, "-")
+    .replace(/^-|-$/g, "");
+  return sanitized || fallback;
+}
+
+function toBase64Utf8(text) {
+  const bytes = new TextEncoder().encode(text);
+  let binary = "";
+  const chunkSize = 0x8000;
+
+  for (let i = 0; i < bytes.length; i += chunkSize) {
+    const chunk = bytes.subarray(i, i + chunkSize);
+    binary += String.fromCharCode(...chunk);
+  }
+
+  return btoa(binary);
+}
+
+function encodeGitHubPath(path) {
+  return path
+    .split("/")
+    .map((segment) => encodeURIComponent(segment))
+    .join("/");
+}
+
+function getSiteRoot(site) {
+  return site === "PROGRAMMERS" ? "프로그래머스" : "백준";
+}
+
+function getProblemDefaultUrl(site, problemNumber) {
+  if (site === "PROGRAMMERS") {
+    return `https://school.programmers.co.kr/learn/courses/30/lessons/${problemNumber}`;
+  }
+  return `https://www.acmicpc.net/problem/${problemNumber}`;
+}
+
+function normalizeLanguage(language, fallback = "Java") {
+  const value = normalizeText(language, fallback);
+  if (/java/i.test(value)) return "Java";
+  if (/kotlin/i.test(value)) return "Kotlin";
+  if (/python/i.test(value)) return "Python";
+  if (/javascript|node/i.test(value)) return "JavaScript";
+  if (/c\+\+/i.test(value)) return "C++";
+  if (/go/i.test(value)) return "Go";
+  if (/rust/i.test(value)) return "Rust";
+  return value;
+}
+
+function buildSubmissionKey(payload) {
+  const submissionId = normalizeText(payload.submissionId);
+  if (submissionId) return `${payload.site}:${submissionId}`;
+
+  const hashInput = [
+    payload.site,
+    payload.problemNumber,
+    payload.problemTitle,
+    payload.language,
+    normalizeText(payload.sourceCode).length
+  ].join("|");
+
+  let hash = 0;
+  for (let i = 0; i < hashInput.length; i += 1) {
+    hash = (hash * 31 + hashInput.charCodeAt(i)) >>> 0;
+  }
+  return `${payload.site}:${payload.problemNumber}:${hash.toString(16)}`;
+}
+
+async function isProcessed(key) {
+  const processed = (await storageGet(STORAGE_PROCESSED_KEY)) || {};
+  return Boolean(processed[key]);
+}
+
+async function markProcessed(key, prUrl) {
+  const processed = (await storageGet(STORAGE_PROCESSED_KEY)) || {};
+  processed[key] = {
+    createdAt: new Date().toISOString(),
+    prUrl: prUrl || ""
+  };
+
+  const keys = Object.keys(processed);
+  if (keys.length > 200) {
+    keys
+      .sort((a, b) => (processed[a]?.createdAt || "").localeCompare(processed[b]?.createdAt || ""))
+      .slice(0, keys.length - 150)
+      .forEach((k) => delete processed[k]);
+  }
+
+  await storageSet({ [STORAGE_PROCESSED_KEY]: processed });
+}
+
+function validateConfig(config) {
+  if (!normalizeText(config.githubToken)) return "GitHub Token이 비어 있습니다.";
+  if (!normalizeText(config.repoOwner)) return "Repo Owner가 비어 있습니다.";
+  if (!normalizeText(config.repoName)) return "Repo Name이 비어 있습니다.";
+  if (!normalizeText(config.baseBranch, "main")) return "Base Branch가 비어 있습니다.";
+  return "";
+}
+
+function validatePayload(payload) {
+  if (!payload) return "제출 데이터가 없습니다.";
+  if (!["BOJ", "PROGRAMMERS"].includes(payload.site)) return "지원하지 않는 사이트입니다.";
+  if (!/^\d+$/.test(normalizeText(payload.problemNumber))) return "문제 번호를 읽지 못했습니다.";
+  if (!normalizeText(payload.problemTitle)) return "문제 제목을 읽지 못했습니다.";
+  if (!normalizeText(payload.sourceCode)) return "소스 코드를 읽지 못했습니다.";
+  return "";
+}
+
+async function githubRequest(config, path, options = {}) {
+  const token = normalizeText(config.githubToken);
+  const response = await fetch(`${GITHUB_API_BASE}${path}`, {
+    ...options,
+    headers: {
+      Accept: "application/vnd.github+json",
+      Authorization: `token ${token}`,
+      "X-GitHub-Api-Version": "2022-11-28",
+      ...(options.headers || {})
+    }
+  });
+
+  const text = await response.text();
+  let json = null;
+  try {
+    json = text ? JSON.parse(text) : null;
+  } catch {
+    json = null;
+  }
+
+  if (!response.ok) {
+    const message = json?.message || text || `GitHub API Error (${response.status})`;
+    throw new Error(message);
+  }
+
+  return json;
+}
+
+async function getBranchSha(config, owner, repo, branch) {
+  const ref = await githubRequest(config, `/repos/${owner}/${repo}/git/ref/heads/${encodeURIComponent(branch)}`);
+  return ref.object.sha;
+}
+
+async function createBranch(config, owner, repo, baseBranch, newBranch) {
+  const baseSha = await getBranchSha(config, owner, repo, baseBranch);
+
+  await githubRequest(config, `/repos/${owner}/${repo}/git/refs`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({
+      ref: `refs/heads/${newBranch}`,
+      sha: baseSha
+    })
+  });
+}
+
+async function getContentShaIfExists(config, owner, repo, path, branch) {
+  try {
+    const data = await githubRequest(
+      config,
+      `/repos/${owner}/${repo}/contents/${encodeGitHubPath(path)}?ref=${encodeURIComponent(branch)}`
+    );
+    return data?.sha;
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    if (/Not Found/i.test(message)) return undefined;
+    throw error;
+  }
+}
+
+async function upsertFile(config, owner, repo, branch, path, content, message) {
+  const sha = await getContentShaIfExists(config, owner, repo, path, branch);
+
+  const body = {
+    message,
+    content: toBase64Utf8(content.endsWith("\n") ? content : `${content}\n`),
+    branch,
+    ...(sha ? { sha } : {})
+  };
+
+  await githubRequest(config, `/repos/${owner}/${repo}/contents/${encodeGitHubPath(path)}`, {
+    method: "PUT",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify(body)
+  });
+}
+
+function buildReadme(problem) {
+  return `# [${problem.siteLabel}] ${problem.problemTitle} - ${problem.problemNumber}
+
+[문제 링크](${problem.problemUrl})
+
+### 성능 요약
+
+메모리: ${problem.memory || "N/A"}, 시간: ${problem.runtime || "N/A"}
+
+### 분류
+
+N/A
+
+### 제출 일자
+
+${problem.submittedAt || "N/A"}
+
+### 문제 설명
+
+자동 생성 PR입니다. 문제 설명은 링크에서 확인해주세요.
+
+### 입력
+
+문제 링크 참고
+
+### 출력
+
+문제 링크 참고
+`;
+}
+
+function buildPrBody(problem, config) {
+  const defaultAsk = normalizeText(config.defaultAsk);
+
+  return `## Coding Test Metadata
+- Site: ${problem.site}
+- Problem Number: ${problem.problemNumber}
+- URL: ${problem.problemUrl}
+- URL: ${problem.site === "PROGRAMMERS" ? problem.problemUrl : "https://school.programmers.co.kr/learn/courses/30/lessons/{문제번호}"}
+- Language: ${problem.language}
+
+## Solution Summary
+- 핵심 아이디어:
+- 시간 복잡도:
+- 공간 복잡도:
+
+## Notes
+- 구현 시 고민한 점:
+
+## ASK
+- 피드백 요청할 부분: ${defaultAsk}
+`;
+}
+
+async function createPullRequest(config, payload) {
+  const owner = normalizeText(config.repoOwner);
+  const repo = normalizeText(config.repoName);
+  const baseBranch = normalizeText(config.baseBranch, "main");
+
+  const site = payload.site;
+  const siteRoot = getSiteRoot(site);
+  const problemNumber = normalizeText(payload.problemNumber);
+  const problemTitle = sanitizeTitleForPath(payload.problemTitle) || `problem-${problemNumber}`;
+  const language = normalizeLanguage(payload.language, normalizeText(config.defaultLanguage, "Java"));
+  const sourceCode = String(payload.sourceCode || "");
+  const runtime = normalizeText(payload.runtime);
+  const memory = normalizeText(payload.memory);
+  const submittedAt = normalizeText(payload.submittedAt);
+  const problemUrl = normalizeText(payload.problemUrl, getProblemDefaultUrl(site, problemNumber));
+
+  const folderName = `${problemNumber}.${problemTitle}`;
+  const folderPath = `${siteRoot}/${folderName}`;
+  const codeFilePath = `${folderPath}/${problemTitle}.java`;
+  const readmePath = `${folderPath}/README.md`;
+
+  const timeSuffix = String(Date.now());
+  const branch = `auto/${sanitizeBranchPart(site, "site")}/${sanitizeBranchPart(problemNumber, "problem")}-${timeSuffix}`;
+
+  await createBranch(config, owner, repo, baseBranch, branch);
+
+  const readme = buildReadme({
+    site,
+    siteLabel: site === "PROGRAMMERS" ? "프로그래머스" : "백준",
+    problemNumber,
+    problemTitle,
+    problemUrl,
+    runtime,
+    memory,
+    submittedAt
+  });
+
+  await upsertFile(config, owner, repo, branch, readmePath, readme, `docs: add ${folderName} metadata`);
+  await upsertFile(config, owner, repo, branch, codeFilePath, sourceCode, `feat: add ${folderName} solution`);
+
+  const title = `${site === "PROGRAMMERS" ? "프로그래머스" : "백준"}/${problemTitle}/${problemNumber}`;
+  const prBody = buildPrBody(
+    {
+      site,
+      problemNumber,
+      problemUrl,
+      language,
+      runtime,
+      memory,
+      submittedAt
+    },
+    config
+  );
+
+  const pr = await githubRequest(config, `/repos/${owner}/${repo}/pulls`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({
+      title,
+      head: branch,
+      base: baseBranch,
+      body: prBody
+    })
+  });
+
+  return {
+    pullRequestUrl: pr.html_url,
+    pullRequestNumber: pr.number,
+    branch
+  };
+}
+
+async function handleSubmission(rawPayload, source) {
+  const config = (await storageGet(STORAGE_CONFIG_KEY)) || {};
+  const configError = validateConfig(config);
+  if (configError) return { ok: false, message: configError };
+
+  const payload = {
+    site: normalizeText(rawPayload?.site).toUpperCase(),
+    problemNumber: normalizeText(rawPayload?.problemNumber),
+    problemTitle: normalizeText(rawPayload?.problemTitle),
+    language: normalizeLanguage(rawPayload?.language, normalizeText(config.defaultLanguage, "Java")),
+    sourceCode: String(rawPayload?.sourceCode || ""),
+    runtime: normalizeText(rawPayload?.runtime),
+    memory: normalizeText(rawPayload?.memory),
+    submittedAt: normalizeText(rawPayload?.submittedAt),
+    problemUrl: normalizeText(rawPayload?.problemUrl),
+    submissionId: normalizeText(rawPayload?.submissionId)
+  };
+
+  const payloadError = validatePayload(payload);
+  if (payloadError) return { ok: false, message: payloadError };
+
+  const key = buildSubmissionKey(payload);
+  if (await isProcessed(key)) {
+    return { ok: true, skipped: true, message: "이미 처리한 제출입니다." };
+  }
+
+  try {
+    const result = await createPullRequest(config, payload);
+    await markProcessed(key, result.pullRequestUrl);
+
+    return {
+      ok: true,
+      source,
+      ...result
+    };
+  } catch (error) {
+    return {
+      ok: false,
+      message: error instanceof Error ? error.message : String(error)
+    };
+  }
+}
+
+chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
+  if (!message || message.type !== MESSAGE_SUBMISSION) {
+    return false;
+  }
+
+  handleSubmission(message.payload || {}, message.source || "unknown")
+    .then((result) => sendResponse(result))
+    .catch((error) =>
+      sendResponse({
+        ok: false,
+        message: error instanceof Error ? error.message : String(error)
+      })
+    );
+
+  return true;
+});

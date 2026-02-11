@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8" />
+    <title>Coding Test PR Assistant</title>
+    <style>
+      body {
+        margin: 14px;
+        width: 320px;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      }
+      button {
+        width: 100%;
+        padding: 9px 10px;
+      }
+      .status {
+        margin-top: 10px;
+        font-size: 12px;
+        white-space: pre-wrap;
+      }
+      a {
+        display: block;
+        margin-top: 10px;
+        font-size: 12px;
+      }
+    </style>
+  </head>
+  <body>
+    <button id="triggerButton">현재 페이지 기준 PR 생성</button>
+    <div id="status" class="status"></div>
+    <a href="options.html" target="_blank">설정 열기</a>
+
+    <script src="popup.js"></script>
+  </body>
+</html>
