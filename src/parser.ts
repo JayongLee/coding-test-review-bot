@@ -20,6 +20,7 @@ export function parsePrBody(body?: string | null): PrProblemMetadata {
   if (!body) return {};
   const siteRaw = extractField(body, "Site");
   const problemNumber = extractField(body, "Problem Number");
+  const problemUrl = extractField(body, "URL") ?? extractField(body, "Problem URL");
   const language = extractField(body, "Language");
   const runtime = extractField(body, "Runtime");
   const memory = extractField(body, "Memory");
@@ -28,6 +29,7 @@ export function parsePrBody(body?: string | null): PrProblemMetadata {
   return {
     site: siteRaw ? parseSite(siteRaw) : undefined,
     problemNumber,
+    problemUrl,
     language,
     runtime,
     memory,

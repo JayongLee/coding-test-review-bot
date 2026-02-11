@@ -19,12 +19,14 @@ import {
 import type { WorkerJob } from "./jobs.js";
 import { buildProblemMarkdown, sanitizeProblemTitle } from "./markdown.js";
 import { hasRequiredTemplateFields, parsePrBody } from "./parser.js";
+import type { SupportedSite } from "./types.js";
 
 const REQUIRED_TEMPLATE_GUIDE = `
 PR 본문에 아래 필드를 채워주세요.
 
 - Site: BOJ | PROGRAMMERS
 - Problem Number: 예) 10546
+- URL: BOJ는 https://www.acmicpc.net/problem/{문제번호}, PROGRAMMERS는 https://school.programmers.co.kr/learn/courses/30/lessons/{문제번호}
 - Language: Java
 `;
 
@@ -48,8 +50,12 @@ function buildFolderName(problemNumber: string, title: string): string {
   return `${problemNumber}.${sanitizedTitle}`;
 }
 
+function buildSiteRootFolder(site: SupportedSite): string {
+  return site === "PROGRAMMERS" ? "프로그래머스" : "백준";
+}
+
 function defaultJavaSource(): string {
-  return `public class Main {
+  return `class Main {
     public static void main(String[] args) throws Exception {
         // TODO: solve
     }
@@ -191,11 +197,14 @@ async function handlePullRequestJob(job: WorkerJob, octokit: Octokit): Promise<v
     const problem = await crawlProblem(metadata);
     const problemMarkdown = buildProblemMarkdown(metadata, problem);
     const folderName = buildFolderName(metadata.problemNumber!, problem.title);
+    const siteRoot = buildSiteRootFolder(metadata.site!);
+    const fileTitle = sanitizeProblemTitle(problem.title) || "문제";
+    const folderPath = `${siteRoot}/${folderName}`;
     const sourceCode = (await loadPrimaryJavaCode(context)) || defaultJavaSource();
 
     await commitFilesToPrBranch(context, `docs: sync problem assets for ${folderName}`, [
-      { path: `${folderName}/README.md`, content: problemMarkdown },
-      { path: `${folderName}/문제.java`, content: sourceCode }
+      { path: `${folderPath}/README.md`, content: problemMarkdown },
+      { path: `${folderPath}/${fileTitle}.java`, content: sourceCode }
     ]);
 
     const changedFiles = await loadChangedFilesForReview(context);

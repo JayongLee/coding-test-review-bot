@@ -45,9 +45,39 @@ async function fetchHtml(url: string): Promise<string> {
   throw new ForbiddenFetchError(url);
 }
 
-async function crawlBoj(problemNumber: string): Promise<CrawledProblem> {
-  const problemUrl = `https://www.acmicpc.net/problem/${problemNumber}`;
-  const html = await fetchHtml(problemUrl);
+function defaultProblemUrl(site: PrProblemMetadata["site"], problemNumber: string): string {
+  return site === "PROGRAMMERS"
+    ? `https://school.programmers.co.kr/learn/courses/30/lessons/${problemNumber}`
+    : `https://www.acmicpc.net/problem/${problemNumber}`;
+}
+
+function pickProblemUrl(site: PrProblemMetadata["site"], problemNumber: string, rawUrl?: string): string {
+  if (!rawUrl) return defaultProblemUrl(site, problemNumber);
+
+  const trimmed = rawUrl.trim();
+  if (!trimmed) return defaultProblemUrl(site, problemNumber);
+
+  try {
+    const url = new URL(trimmed);
+    if (site === "PROGRAMMERS") {
+      const validHost = /(^|\.)programmers\.co\.kr$/i.test(url.hostname);
+      const validPath = /\/lessons\/\d+/.test(url.pathname);
+      if (validHost && validPath) return trimmed;
+      return defaultProblemUrl(site, problemNumber);
+    }
+
+    const validHost = /(^|\.)acmicpc\.net$/i.test(url.hostname);
+    const validPath = /\/problem\/\d+/.test(url.pathname);
+    if (validHost && validPath) return trimmed;
+    return defaultProblemUrl(site, problemNumber);
+  } catch {
+    return defaultProblemUrl(site, problemNumber);
+  }
+}
+
+async function crawlBoj(problemNumber: string, problemUrl?: string): Promise<CrawledProblem> {
+  const targetUrl = pickProblemUrl("BOJ", problemNumber, problemUrl);
+  const html = await fetchHtml(targetUrl);
   const $ = load(html);
 
   const title = $("#problem_title").text().trim() || `[Unknown] ${problemNumber}`;
@@ -58,7 +88,7 @@ async function crawlBoj(problemNumber: string): Promise<CrawledProblem> {
 
   return {
     title,
-    problemUrl,
+    problemUrl: targetUrl,
     classification,
     descriptionHtml,
     inputHtml,
@@ -70,9 +100,9 @@ function firstNonEmpty(values: Array<string | undefined | null>): string {
   return values.find((value) => value && value.trim().length > 0)?.trim() ?? "";
 }
 
-async function crawlProgrammers(problemNumber: string): Promise<CrawledProblem> {
-  const problemUrl = `https://school.programmers.co.kr/learn/courses/30/lessons/${problemNumber}`;
-  const html = await fetchHtml(problemUrl);
+async function crawlProgrammers(problemNumber: string, problemUrl?: string): Promise<CrawledProblem> {
+  const targetUrl = pickProblemUrl("PROGRAMMERS", problemNumber, problemUrl);
+  const html = await fetchHtml(targetUrl);
   const $ = load(html);
 
   const title = firstNonEmpty([
@@ -102,7 +132,7 @@ async function crawlProgrammers(problemNumber: string): Promise<CrawledProblem> 
 
   return {
     title,
-    problemUrl,
+    problemUrl: targetUrl,
     classification,
     descriptionHtml,
     inputHtml,
@@ -113,10 +143,7 @@ async function crawlProgrammers(problemNumber: string): Promise<CrawledProblem> 
 function buildFallbackProblem(metadata: PrProblemMetadata): CrawledProblem {
   const siteName = metadata.site === "PROGRAMMERS" ? "프로그래머스" : "백준";
   const problemNumber = metadata.problemNumber ?? "unknown";
-  const problemUrl =
-    metadata.site === "PROGRAMMERS"
-      ? `https://school.programmers.co.kr/learn/courses/30/lessons/${problemNumber}`
-      : `https://www.acmicpc.net/problem/${problemNumber}`;
+  const problemUrl = pickProblemUrl(metadata.site, problemNumber, metadata.problemUrl);
 
   return {
     title: `${siteName} 문제 ${problemNumber}`,
@@ -137,9 +164,9 @@ export async function crawlProblem(metadata: PrProblemMetadata): Promise<Crawled
   try {
     switch (metadata.site) {
       case "BOJ":
-        return crawlBoj(metadata.problemNumber);
+        return crawlBoj(metadata.problemNumber, metadata.problemUrl);
       case "PROGRAMMERS":
-        return crawlProgrammers(metadata.problemNumber);
+        return crawlProgrammers(metadata.problemNumber, metadata.problemUrl);
       default:
         throw new Error(`Unsupported site: ${String(metadata.site)}`);
     }

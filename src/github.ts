@@ -31,6 +31,9 @@ export interface InlineReviewResult {
   validComments: InlineReviewComment[];
 }
 
+function isGeneratedProblemJavaFile(path: string): boolean {
+  return /^(백준|프로그래머스)\/[^/]+\/[^/]+\.java$/.test(path);
+}
 async function upsertIssueComment(
   octokit: OctokitClient,
   owner: string,
@@ -275,10 +278,19 @@ export async function loadChangedFilesForReview(
 
   const files = await listPullFiles(context.octokit, owner, repo, pullNumber);
 
-  const codeFiles = files
+  const nonGeneratedCodeFiles = files
     .filter((file) => file.status !== "removed")
+    .filter((file) => !isGeneratedProblemJavaFile(file.filename))
     .filter((file) => /\.(java|kt|py|cpp|c|js|ts|go|rs)$/.test(file.filename))
     .slice(0, maxFiles);
+
+  const codeFiles =
+    nonGeneratedCodeFiles.length > 0
+      ? nonGeneratedCodeFiles
+      : files
+          .filter((file) => file.status !== "removed")
+          .filter((file) => /\.(java|kt|py|cpp|c|js|ts|go|rs)$/.test(file.filename))
+          .slice(0, maxFiles);
 
   const results: ChangedFileForReview[] = [];
   for (const file of codeFiles) {
@@ -315,7 +327,11 @@ export async function loadPrimaryJavaCode(context: PullRequestContext): Promise<
 
   const files = await listPullFiles(context.octokit, owner, repo, pullNumber);
 
-  const javaFile = files.find((file) => file.status !== "removed" && file.filename.endsWith(".java"));
+  const preferredJavaFile = files.find(
+    (file) => file.status !== "removed" && file.filename.endsWith(".java") && !isGeneratedProblemJavaFile(file.filename)
+  );
+  const fallbackJavaFile = files.find((file) => file.status !== "removed" && file.filename.endsWith(".java"));
+  const javaFile = preferredJavaFile ?? fallbackJavaFile;
   if (!javaFile) return null;
 
   return getTextFileContent(context.octokit, owner, repo, ref, javaFile.filename);

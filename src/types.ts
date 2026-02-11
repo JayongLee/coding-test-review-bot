@@ -3,6 +3,7 @@ export type SupportedSite = "BOJ" | "PROGRAMMERS";
 export interface PrProblemMetadata {
   site?: SupportedSite;
   problemNumber?: string;
+  problemUrl?: string;
   language?: string;
   runtime?: string;
   memory?: string;
