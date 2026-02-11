@@ -25,7 +25,7 @@ BOJ/Programmers 정답 제출 결과를 감지해 자동으로 GitHub PR을 생�
 1. Chrome에서 `chrome://extensions` 접속
 2. 우측 상단 `개발자 모드` ON
 3. `압축해제된 확장 프로그램을 로드` 클릭
-4. 이 폴더 선택: `/Users/jayong/Programming/spring/coding-test-review/chrome-extension`
+4. 이 저장소의 `chrome-extension` 폴더 선택
 
 ## 초기 설정
 
