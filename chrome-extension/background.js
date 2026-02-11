@@ -3,6 +3,7 @@ const STORAGE_CONFIG_KEY = "ct_pr_config";
 const STORAGE_PROCESSED_KEY = "ct_pr_processed";
 
 const GITHUB_API_BASE = "https://api.github.com";
+const inFlightSubmissionTasks = new Map();
 
 function getStorageArea() {
   return chrome.storage.sync || chrome.storage.local;
@@ -102,6 +103,15 @@ function normalizeMultiline(value, maxLength = 6000) {
   const text = normalizeText(value).replace(/\r/g, "");
   if (!text) return "";
   return text.length > maxLength ? `${text.slice(0, maxLength)}...` : text;
+}
+
+function hashText(value) {
+  const text = normalizeText(value);
+  let hash = 0;
+  for (let i = 0; i < text.length; i += 1) {
+    hash = (hash * 31 + text.charCodeAt(i)) >>> 0;
+  }
+  return hash.toString(16).padStart(8, "0");
 }
 
 function buildSubmissionKey(payload) {
@@ -209,6 +219,24 @@ async function createBranch(config, owner, repo, baseBranch, newBranch) {
       sha: baseSha
     })
   });
+}
+
+function isBranchAlreadyExistsError(error) {
+  const message = error instanceof Error ? error.message : String(error);
+  return /Reference already exists|already exists/i.test(message);
+}
+
+function isAlreadyHasPullRequestError(error) {
+  const message = error instanceof Error ? error.message : String(error);
+  return /A pull request already exists/i.test(message);
+}
+
+async function findOpenPullRequestByHead(config, owner, repo, headOwner, headBranch) {
+  const pulls = await githubRequest(
+    config,
+    `/repos/${owner}/${repo}/pulls?state=open&head=${encodeURIComponent(`${headOwner}:${headBranch}`)}`
+  );
+  return Array.isArray(pulls) && pulls.length > 0 ? pulls[0] : null;
 }
 
 async function getContentShaIfExists(config, owner, repo, path, branch) {
@@ -339,10 +367,17 @@ async function createPullRequest(config, payload) {
   const codeFilePath = `${folderPath}/${problemTitle}.java`;
   const readmePath = `${folderPath}/README.md`;
 
-  const timeSuffix = String(Date.now());
-  const branch = `auto/${sanitizeBranchPart(site, "site")}/${sanitizeBranchPart(problemNumber, "problem")}-${timeSuffix}`;
+  const submissionKey = buildSubmissionKey(payload);
+  const branchSuffix = hashText(submissionKey).slice(0, 10);
+  const branch = `auto/${sanitizeBranchPart(site, "site")}/${sanitizeBranchPart(problemNumber, "problem")}-${branchSuffix}`;
 
-  await createBranch(config, owner, repo, baseBranch, branch);
+  try {
+    await createBranch(config, owner, repo, baseBranch, branch);
+  } catch (error) {
+    if (!isBranchAlreadyExistsError(error)) {
+      throw error;
+    }
+  }
 
   const readme = buildReadme({
     site,
@@ -363,6 +398,15 @@ async function createPullRequest(config, payload) {
   await upsertFile(config, owner, repo, branch, readmePath, readme, `docs: add ${folderName} metadata`);
   await upsertFile(config, owner, repo, branch, codeFilePath, sourceCode, `feat: add ${folderName} solution`);
 
+  const existingOpenPr = await findOpenPullRequestByHead(config, owner, repo, owner, branch);
+  if (existingOpenPr) {
+    return {
+      pullRequestUrl: existingOpenPr.html_url,
+      pullRequestNumber: existingOpenPr.number,
+      branch
+    };
+  }
+
   const title = `${site === "PROGRAMMERS" ? "프로그래머스" : "백준"}/${problemTitle}/${problemNumber}`;
   const prBody = buildPrBody(
     {
@@ -379,18 +423,31 @@ async function createPullRequest(config, payload) {
     config
   );
 
-  const pr = await githubRequest(config, `/repos/${owner}/${repo}/pulls`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json"
-    },
-    body: JSON.stringify({
-      title,
-      head: branch,
-      base: baseBranch,
-      body: prBody
-    })
-  });
+  let pr;
+  try {
+    pr = await githubRequest(config, `/repos/${owner}/${repo}/pulls`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        title,
+        head: branch,
+        base: baseBranch,
+        body: prBody
+      })
+    });
+  } catch (error) {
+    if (!isAlreadyHasPullRequestError(error)) {
+      throw error;
+    }
+
+    const existingPr = await findOpenPullRequestByHead(config, owner, repo, owner, branch);
+    if (!existingPr) {
+      throw error;
+    }
+    pr = existingPr;
+  }
 
   return {
     pullRequestUrl: pr.html_url,
@@ -426,31 +483,43 @@ async function handleSubmission(rawPayload, source) {
   if (payloadError) return { ok: false, message: payloadError };
 
   const key = buildSubmissionKey(payload);
-  const processedInfo = await getProcessedInfo(key);
-  if (processedInfo) {
-    return {
-      ok: true,
-      skipped: true,
-      message: "이미 처리한 제출입니다.",
-      pullRequestUrl: normalizeText(processedInfo.prUrl)
-    };
+  const inFlightTask = inFlightSubmissionTasks.get(key);
+  if (inFlightTask) {
+    return inFlightTask;
   }
 
-  try {
-    const result = await createPullRequest(config, payload);
-    await markProcessed(key, result.pullRequestUrl);
+  const task = (async () => {
+    try {
+      const processedInfo = await getProcessedInfo(key);
+      if (processedInfo) {
+        return {
+          ok: true,
+          skipped: true,
+          message: "이미 처리한 제출입니다.",
+          pullRequestUrl: normalizeText(processedInfo.prUrl)
+        };
+      }
 
-    return {
-      ok: true,
-      source,
-      ...result
-    };
-  } catch (error) {
-    return {
-      ok: false,
-      message: error instanceof Error ? error.message : String(error)
-    };
-  }
+      const result = await createPullRequest(config, payload);
+      await markProcessed(key, result.pullRequestUrl);
+
+      return {
+        ok: true,
+        source,
+        ...result
+      };
+    } catch (error) {
+      return {
+        ok: false,
+        message: error instanceof Error ? error.message : String(error)
+      };
+    } finally {
+      inFlightSubmissionTasks.delete(key);
+    }
+  })();
+
+  inFlightSubmissionTasks.set(key, task);
+  return task;
 }
 
 chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
