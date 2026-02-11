@@ -86,6 +86,24 @@ function normalizeLanguage(language, fallback = "Java") {
   return value;
 }
 
+function normalizeList(value) {
+  if (Array.isArray(value)) {
+    return value.map((item) => normalizeText(item)).filter(Boolean);
+  }
+  const text = normalizeText(value);
+  if (!text) return [];
+  return text
+    .split(",")
+    .map((item) => normalizeText(item))
+    .filter(Boolean);
+}
+
+function normalizeMultiline(value, maxLength = 6000) {
+  const text = normalizeText(value).replace(/\r/g, "");
+  if (!text) return "";
+  return text.length > maxLength ? `${text.slice(0, maxLength)}...` : text;
+}
+
 function buildSubmissionKey(payload) {
   const submissionId = normalizeText(payload.submissionId);
   if (submissionId) return `${payload.site}:${submissionId}`;
@@ -105,9 +123,9 @@ function buildSubmissionKey(payload) {
   return `${payload.site}:${payload.problemNumber}:${hash.toString(16)}`;
 }
 
-async function isProcessed(key) {
+async function getProcessedInfo(key) {
   const processed = (await storageGet(STORAGE_PROCESSED_KEY)) || {};
-  return Boolean(processed[key]);
+  return processed[key] || null;
 }
 
 async function markProcessed(key, prUrl) {
@@ -227,6 +245,12 @@ async function upsertFile(config, owner, repo, branch, path, content, message) {
 }
 
 function buildReadme(problem) {
+  const problemTags = (problem.problemTags || []).join(", ") || "N/A";
+  const level = normalizeText(problem.level, "N/A");
+  const description = normalizeMultiline(problem.problemDescription);
+  const codeLength = normalizeText(problem.codeLength, "N/A");
+  const score = normalizeText(problem.score, "N/A");
+
   return `# [${problem.siteLabel}] ${problem.problemTitle} - ${problem.problemNumber}
 
 [문제 링크](${problem.problemUrl})
@@ -234,10 +258,15 @@ function buildReadme(problem) {
 ### 성능 요약
 
 메모리: ${problem.memory || "N/A"}, 시간: ${problem.runtime || "N/A"}
+코드 길이: ${codeLength}, 점수: ${score}
 
 ### 분류
 
-N/A
+${problemTags}
+
+### 난이도
+
+${level}
 
 ### 제출 일자
 
@@ -245,7 +274,7 @@ ${problem.submittedAt || "N/A"}
 
 ### 문제 설명
 
-자동 생성 PR입니다. 문제 설명은 링크에서 확인해주세요.
+${description || "자동 생성 PR입니다. 문제 설명은 링크에서 확인해주세요."}
 
 ### 입력
 
@@ -259,12 +288,16 @@ ${problem.submittedAt || "N/A"}
 
 function buildPrBody(problem, config) {
   const defaultAsk = normalizeText(config.defaultAsk);
+  const problemTags = (problem.problemTags || []).join(", ");
+  const level = normalizeText(problem.level);
 
   return `## Coding Test Metadata
 - Site: ${problem.site}
 - Problem Number: ${problem.problemNumber}
 - URL: ${problem.problemUrl}
 - URL: ${problem.site === "PROGRAMMERS" ? problem.problemUrl : "https://school.programmers.co.kr/learn/courses/30/lessons/{문제번호}"}
+- Level: ${level}
+- Categories: ${problemTags}
 - Language: ${problem.language}
 
 ## Solution Summary
@@ -293,8 +326,13 @@ async function createPullRequest(config, payload) {
   const sourceCode = String(payload.sourceCode || "");
   const runtime = normalizeText(payload.runtime);
   const memory = normalizeText(payload.memory);
+  const codeLength = normalizeText(payload.codeLength);
+  const score = normalizeText(payload.score);
   const submittedAt = normalizeText(payload.submittedAt);
   const problemUrl = normalizeText(payload.problemUrl, getProblemDefaultUrl(site, problemNumber));
+  const level = normalizeText(payload.level);
+  const problemTags = normalizeList(payload.problemTags);
+  const problemDescription = normalizeMultiline(payload.problemDescription);
 
   const folderName = `${problemNumber}.${problemTitle}`;
   const folderPath = `${siteRoot}/${folderName}`;
@@ -314,6 +352,11 @@ async function createPullRequest(config, payload) {
     problemUrl,
     runtime,
     memory,
+    codeLength,
+    score,
+    level,
+    problemTags,
+    problemDescription,
     submittedAt
   });
 
@@ -326,6 +369,8 @@ async function createPullRequest(config, payload) {
       site,
       problemNumber,
       problemUrl,
+      level,
+      problemTags,
       language,
       runtime,
       memory,
@@ -367,8 +412,13 @@ async function handleSubmission(rawPayload, source) {
     sourceCode: String(rawPayload?.sourceCode || ""),
     runtime: normalizeText(rawPayload?.runtime),
     memory: normalizeText(rawPayload?.memory),
+    codeLength: normalizeText(rawPayload?.codeLength),
+    score: normalizeText(rawPayload?.score),
     submittedAt: normalizeText(rawPayload?.submittedAt),
     problemUrl: normalizeText(rawPayload?.problemUrl),
+    level: normalizeText(rawPayload?.level),
+    problemTags: normalizeList(rawPayload?.problemTags),
+    problemDescription: normalizeMultiline(rawPayload?.problemDescription),
     submissionId: normalizeText(rawPayload?.submissionId)
   };
 
@@ -376,8 +426,14 @@ async function handleSubmission(rawPayload, source) {
   if (payloadError) return { ok: false, message: payloadError };
 
   const key = buildSubmissionKey(payload);
-  if (await isProcessed(key)) {
-    return { ok: true, skipped: true, message: "이미 처리한 제출입니다." };
+  const processedInfo = await getProcessedInfo(key);
+  if (processedInfo) {
+    return {
+      ok: true,
+      skipped: true,
+      message: "이미 처리한 제출입니다.",
+      pullRequestUrl: normalizeText(processedInfo.prUrl)
+    };
   }
 
   try {

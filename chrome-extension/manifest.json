@@ -19,7 +19,7 @@
   "options_page": "options.html",
   "content_scripts": [
     {
-      "matches": ["https://www.acmicpc.net/source/*"],
+      "matches": ["https://www.acmicpc.net/status*"],
       "js": ["content/boj-source.js"],
       "run_at": "document_idle"
     },

@@ -4,8 +4,15 @@ BOJ/Programmers 정답 제출 결과를 감지해 자동으로 GitHub PR을 생�
 
 ## 기능
 
-- BOJ(`acmicpc.net/source/...`) 정답 제출 감지
+- BOJ(`acmicpc.net/status?...`) 정답 제출 감지
 - Programmers(`school.programmers.co.kr/.../lessons/...`) 정답 제출 감지
+- 생성 결과를 페이지 토스트로 표시, BOJ status 행에 `✅ PR 생성됨` 표시
+- BOJ는 정답 제출 중 최적 제출 자동 선택:
+  - 서브태스크 점수 높은 제출
+  - 실행 시간 짧은 제출
+  - 메모리 적은 제출
+  - 코드 길이 짧은 제출
+  - 제출번호 큰 제출(최신)
 - PR 자동 생성:
   - `백준/{문제번호}.{문제명}/README.md`
   - `백준/{문제번호}.{문제명}/{문제명}.java`
@@ -37,7 +44,7 @@ BOJ/Programmers 정답 제출 결과를 감지해 자동으로 GitHub PR을 생�
 
 ## 사용 방법
 
-1. BOJ source 페이지 또는 Programmers lesson 페이지에서 정답 제출
+1. BOJ status 페이지(예: `from_mine=1` 포함) 또는 Programmers lesson 페이지에서 정답 제출
 2. 자동 감지되면 PR 생성
 3. 자동 감지가 실패하면 확장 팝업의 `현재 페이지 기준 PR 생성` 버튼 클릭
 
@@ -48,6 +55,7 @@ BOJ/Programmers 정답 제출 결과를 감지해 자동으로 GitHub PR을 생�
 - Site
 - Problem Number
 - URL
+- Level / Categories
 - Language
 - ASK
 

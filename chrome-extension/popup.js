@@ -19,7 +19,7 @@ function sendToActiveTab(message) {
         if (chrome.runtime.lastError) {
           resolve({
             ok: false,
-            message: "지원 대상 페이지(BOJ source / Programmers lesson)가 아닙니다."
+            message: "지원 대상 페이지(BOJ status / Programmers lesson)가 아닙니다."
           });
           return;
         }
