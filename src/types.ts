@@ -5,6 +5,7 @@ export interface PrProblemMetadata {
   problemNumber?: string;
   problemUrl?: string;
   language?: string;
+  ask?: string;
   runtime?: string;
   memory?: string;
   submittedAt?: string;

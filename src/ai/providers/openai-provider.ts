@@ -74,6 +74,7 @@ export class OpenAiProvider implements AiProvider {
 1) 현재 풀이를 분석하고 더 좋은 접근을 제안한다.
 2) 모범 답안 코드를 ${input.language} 기준으로 작성한다.
 3) 인라인 코멘트는 아래 "허용 라인"에 있는 라인 번호만 사용한다.
+4) 사용자가 ASK 필드에 남긴 요청이 있으면 해당 요청을 우선 반영한다.
 
 응답 JSON 스키마:
 {
@@ -97,6 +98,9 @@ ${input.problemMarkdown}
 
 PR 본문:
 ${input.prBody}
+
+ASK (피드백 요청할 부분):
+${input.askRequest?.trim() || "없음"}
 
 변경 코드:
 ${input.changedCodePrompt}

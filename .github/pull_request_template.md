@@ -1,8 +1,8 @@
 ## Coding Test Metadata
-- Site: BOJ
+- Site:
 - Problem Number:
 - URL: https://www.acmicpc.net/problem/{문제번호}
-- URL (PROGRAMMERS): https://school.programmers.co.kr/learn/courses/30/lessons/{문제번호}
+- URL: https://school.programmers.co.kr/learn/courses/30/lessons/{문제번호}
 - Language:
 
 ## Solution Summary
@@ -12,3 +12,6 @@
 
 ## Notes
 - 구현 시 고민한 점:
+
+## ASK
+- 피드백 요청할 부분:

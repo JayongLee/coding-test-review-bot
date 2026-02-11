@@ -28,6 +28,7 @@ PR 본문에 아래 필드를 채워주세요.
 - Problem Number: 예) 10546
 - URL: BOJ는 https://www.acmicpc.net/problem/{문제번호}, PROGRAMMERS는 https://school.programmers.co.kr/learn/courses/30/lessons/{문제번호}
 - Language: Java
+- ASK > 피드백 요청할 부분: 예) 시간복잡도 개선 관점으로 집중 리뷰
 `;
 
 interface SqsRecordLike {
@@ -212,6 +213,7 @@ async function handlePullRequestJob(job: WorkerJob, octokit: Octokit): Promise<v
       problemMarkdown,
       prBody: pull.body || "",
       language: metadata.language || "Java",
+      askRequest: metadata.ask,
       changedCodePrompt: buildChangedCodePrompt(changedFiles),
       reviewTargets: changedFiles
     });

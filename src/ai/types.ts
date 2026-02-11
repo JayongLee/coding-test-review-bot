@@ -9,6 +9,7 @@ export interface AiReviewInput {
   problemMarkdown: string;
   prBody: string;
   language: string;
+  askRequest?: string;
   changedCodePrompt: string;
   reviewTargets: ReviewTarget[];
 }

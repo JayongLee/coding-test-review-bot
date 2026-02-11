@@ -33,6 +33,7 @@ PR에서 코딩테스트 메타데이터를 읽고 문제를 크롤링한 뒤,
 - `Problem Number: 10546`
 - `URL: 문제 링크`
 - `Language: Java`
+- `ASK > 피드백 요청할 부분: (선택) AI에게 집중 요청할 리뷰 포인트`
 
 URL 예시:
 - BOJ: `https://www.acmicpc.net/problem/{문제번호}`
