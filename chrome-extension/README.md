@@ -66,4 +66,4 @@ BOJ/Programmers 정답 제출 결과를 감지해 자동으로 GitHub PR을 생�
 우리 서비스 요구사항(PR 생성 중심)에 맞게 커스터마이징하여 작성했습니다.
 
 - 원본 라이선스: MIT
-- 상세 고지: `THIRD_PARTY_NOTICES.md`
+- 상세 고지: 저장소의 Third Party Notices 문서 참고
