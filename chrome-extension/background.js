@@ -272,6 +272,80 @@ async function upsertFile(config, owner, repo, branch, path, content, message) {
   });
 }
 
+async function createBlob(config, owner, repo, content) {
+  const normalizedContent = content.endsWith("\n") ? content : `${content}\n`;
+
+  const blob = await githubRequest(config, `/repos/${owner}/${repo}/git/blobs`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({
+      content: normalizedContent,
+      encoding: "utf-8"
+    })
+  });
+
+  return blob.sha;
+}
+
+async function createSingleCommitForFiles(config, owner, repo, branch, files, message) {
+  const headSha = await getBranchSha(config, owner, repo, branch);
+  const headCommit = await githubRequest(config, `/repos/${owner}/${repo}/git/commits/${headSha}`);
+  const baseTreeSha = headCommit.tree.sha;
+
+  const treeItems = [];
+  for (const file of files) {
+    const blobSha = await createBlob(config, owner, repo, String(file.content || ""));
+    treeItems.push({
+      path: file.path,
+      mode: "100644",
+      type: "blob",
+      sha: blobSha
+    });
+  }
+
+  const tree = await githubRequest(config, `/repos/${owner}/${repo}/git/trees`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({
+      base_tree: baseTreeSha,
+      tree: treeItems
+    })
+  });
+
+  if (tree.sha === baseTreeSha) {
+    return { created: false, sha: headSha };
+  }
+
+  const commit = await githubRequest(config, `/repos/${owner}/${repo}/git/commits`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({
+      message,
+      tree: tree.sha,
+      parents: [headSha]
+    })
+  });
+
+  await githubRequest(config, `/repos/${owner}/${repo}/git/refs/heads/${encodeURIComponent(branch)}`, {
+    method: "PATCH",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({
+      sha: commit.sha,
+      force: false
+    })
+  });
+
+  return { created: true, sha: commit.sha };
+}
+
 function buildReadme(problem) {
   const problemTags = (problem.problemTags || []).join(", ") || "N/A";
   const level = normalizeText(problem.level, "N/A");
@@ -395,8 +469,20 @@ async function createPullRequest(config, payload) {
     submittedAt
   });
 
-  await upsertFile(config, owner, repo, branch, readmePath, readme, `docs: add ${folderName} metadata`);
-  await upsertFile(config, owner, repo, branch, codeFilePath, sourceCode, `feat: add ${folderName} solution`);
+  const commitSite = site === "PROGRAMMERS" ? "programmers" : "boj";
+  const commitMessage = `${commitSite}: add ${folderName} solution & metadata`;
+
+  await createSingleCommitForFiles(
+    config,
+    owner,
+    repo,
+    branch,
+    [
+      { path: readmePath, content: readme },
+      { path: codeFilePath, content: sourceCode }
+    ],
+    commitMessage
+  );
 
   const existingOpenPr = await findOpenPullRequestByHead(config, owner, repo, owner, branch);
   if (existingOpenPr) {
