@@ -81,10 +81,10 @@ npm run dev
 
 ## AWS Lambda 배포
 
-Lambda 엔트리포인트는 `/Users/jayong/Programming/spring/coding-test-review/src/lambda.ts`이며,
-Worker 엔트리포인트는 `/Users/jayong/Programming/spring/coding-test-review/src/worker.ts`입니다.
+Lambda 엔트리포인트는 `src/lambda.ts`이며,
+Worker 엔트리포인트는 `src/worker.ts`입니다.
 
-SAM 템플릿(`/Users/jayong/Programming/spring/coding-test-review/template.yaml`)은 다음 리소스를 생성합니다.
+SAM 템플릿(`template.yaml`)은 다음 리소스를 생성합니다.
 
 - API Gateway HTTP API
 - Webhook Lambda (ingress)
