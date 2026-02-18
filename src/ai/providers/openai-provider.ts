@@ -81,12 +81,13 @@ export class OpenAiProvider implements AiProvider {
   "summary_markdown": "## 총평\\n...\\n## 더 좋은 접근 제안\\n...\\n## 코드 레벨 개선 포인트\\n...\\n## 놓치기 쉬운 테스트 케이스\\n...",
   "answer_code": "모범 답안 코드 문자열",
   "inline_suggestions": [
-    {"path":"src/Main.java","line":23,"body":"개선 코멘트"}
+    {"path":"허용 라인에 있는 정확한 파일 경로","line":23,"body":"개선 코멘트"}
   ]
 }
 
 제약:
 - inline_suggestions 최대 6개
+- inline_suggestions.path는 허용 라인에 나온 파일 경로 중 하나와 정확히 일치
 - summary_markdown에는 "현재 접근 복잡도", "대안 접근", "왜 더 좋은지"를 반드시 포함
 - answer_code는 실행 가능한 형태로 작성
 

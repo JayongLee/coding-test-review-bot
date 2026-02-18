@@ -31,6 +31,13 @@ export interface InlineReviewResult {
   validComments: InlineReviewComment[];
 }
 
+interface FileLineIndex {
+  path: string;
+  normalizedPath: string;
+  basename: string;
+  rightLines: number[];
+}
+
 function isGeneratedProblemJavaFile(path: string): boolean {
   return /^(백준|프로그래머스)\/[^/]+\/[^/]+\.java$/.test(path);
 }
@@ -103,6 +110,104 @@ function parseAddedLinesFromPatch(patch: string): number[] {
   }
 
   return added;
+}
+
+function parseRightSideLinesFromPatch(patch: string): number[] {
+  const lines = patch.split("\n");
+  const right = new Set<number>();
+  let newLine = 0;
+  let inHunk = false;
+
+  for (const line of lines) {
+    if (line.startsWith("@@")) {
+      const match = line.match(/\+(\d+)(?:,(\d+))?/);
+      if (!match) {
+        inHunk = false;
+        continue;
+      }
+      newLine = Number(match[1]) - 1;
+      inHunk = true;
+      continue;
+    }
+
+    if (!inHunk) continue;
+    if (line.startsWith("+") && !line.startsWith("+++")) {
+      newLine += 1;
+      right.add(newLine);
+      continue;
+    }
+    if (line.startsWith("-") && !line.startsWith("---")) {
+      continue;
+    }
+    if (line.startsWith(" ")) {
+      newLine += 1;
+      right.add(newLine);
+    }
+  }
+
+  return [...right].sort((a, b) => a - b);
+}
+
+function normalizePathForMatch(path: string): string {
+  let normalized = path.trim().replace(/\\/g, "/");
+  normalized = normalized.replace(/^\.\//, "");
+  normalized = normalized.replace(/^\/+/, "");
+  return normalized;
+}
+
+function buildFileLineIndexes(changedFiles: ChangedFileForReview[]): FileLineIndex[] {
+  return changedFiles.map((file) => {
+    const normalizedPath = normalizePathForMatch(file.path);
+    const basename = normalizedPath.split("/").pop() || normalizedPath;
+    const rightLines = parseRightSideLinesFromPatch(file.patch);
+    return {
+      path: file.path,
+      normalizedPath,
+      basename,
+      rightLines
+    };
+  });
+}
+
+function resolvePathForInlineComment(requestedPath: string, indexes: FileLineIndex[]): string | null {
+  const requested = normalizePathForMatch(requestedPath);
+  if (!requested) return null;
+
+  const exact = indexes.find((item) => item.normalizedPath === requested);
+  if (exact) return exact.path;
+
+  const suffixMatched = indexes.filter(
+    (item) =>
+      item.normalizedPath.endsWith(`/${requested}`) || requested.endsWith(`/${item.normalizedPath}`)
+  );
+  if (suffixMatched.length === 1) return suffixMatched[0].path;
+
+  const basename = requested.split("/").pop() || requested;
+  const basenameMatched = indexes.filter((item) => item.basename === basename);
+  if (basenameMatched.length === 1) return basenameMatched[0].path;
+
+  if (indexes.length === 1) return indexes[0].path;
+  return null;
+}
+
+function findClosestReviewLine(targetLine: number, rightLines: number[]): number | null {
+  if (!Number.isInteger(targetLine) || targetLine <= 0) return null;
+  if (rightLines.length === 0) return null;
+  if (rightLines.includes(targetLine)) return targetLine;
+
+  let bestLine = rightLines[0];
+  let bestDistance = Math.abs(bestLine - targetLine);
+  for (const line of rightLines) {
+    const distance = Math.abs(line - targetLine);
+    if (distance < bestDistance) {
+      bestLine = line;
+      bestDistance = distance;
+    }
+  }
+
+  // 과도한 점프를 막기 위해 너무 먼 라인은 버린다.
+  if (bestDistance > 20) return null;
+  return bestLine;
 }
 
 async function getTextFileContent(
@@ -407,26 +512,37 @@ export async function createInlineReview(
   const owner = context.payload.repository.owner.login;
   const repo = context.payload.repository.name;
   const pullNumber = context.payload.pull_request.number;
-  const headSha = context.payload.pull_request.head.sha;
+  const latestPull = await context.octokit.rest.pulls.get({
+    owner,
+    repo,
+    pull_number: pullNumber
+  });
+  const headSha = latestPull.data.head.sha;
 
-  const candidateLineSetByPath = new Map<string, Set<number>>();
-  for (const file of changedFiles) {
-    candidateLineSetByPath.set(file.path, new Set(file.addedLines));
-  }
+  const indexes = buildFileLineIndexes(changedFiles);
+  const rightLinesByPath = new Map(indexes.map((item) => [item.path, item.rightLines]));
 
-  const deduped = new Map<string, InlineReviewComment>();
+  const resolved = new Map<string, InlineReviewComment>();
   for (const item of comments) {
-    const key = `${item.path}:${item.line}`;
-    deduped.set(key, item);
+    const body = item.body.trim();
+    if (!body) continue;
+
+    const resolvedPath = resolvePathForInlineComment(item.path, indexes);
+    if (!resolvedPath) continue;
+
+    const rightLines = rightLinesByPath.get(resolvedPath) || [];
+    const resolvedLine = findClosestReviewLine(item.line, rightLines);
+    if (!resolvedLine) continue;
+
+    const key = `${resolvedPath}:${resolvedLine}`;
+    resolved.set(key, {
+      path: resolvedPath,
+      line: resolvedLine,
+      body
+    });
   }
 
-  const validComments = [...deduped.values()]
-    .filter((item) => item.body.trim().length > 0)
-    .filter((item) => {
-      const lineSet = candidateLineSetByPath.get(item.path);
-      return lineSet ? lineSet.has(item.line) : false;
-    })
-    .slice(0, 8);
+  const validComments = [...resolved.values()].slice(0, 8);
 
   if (validComments.length === 0) {
     return {
