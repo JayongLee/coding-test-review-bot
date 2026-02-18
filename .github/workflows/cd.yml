@@ -71,7 +71,7 @@ jobs:
           MODEL="${OPENAI_MODEL:-gpt-4.1-mini}"
           TIMEOUT_MS="${OPENAI_TIMEOUT_MS:-15000}"
           GEM_MODEL="${GEMINI_MODEL:-gemini-2.0-flash}"
-          GEM_TIMEOUT_MS="${GEMINI_TIMEOUT_MS:-30000}"
+          GEM_TIMEOUT_MS="${GEMINI_TIMEOUT_MS:-60000}"
           PROVIDER="${AI_PROVIDER:-gemini}"
           HOST="${GITHUB_HOST:-}"
 
