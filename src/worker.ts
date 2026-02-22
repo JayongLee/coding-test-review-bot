@@ -8,7 +8,7 @@ import {
   commitFilesToPrBranch,
   createInlineReview,
   loadChangedFilesForReview,
-  loadPrimaryJavaCode,
+  loadPrimaryCode,
   removeTemplateCheckComment,
   type PullRequestContext,
   upsertAiReviewComment,
@@ -55,20 +55,72 @@ function buildSiteRootFolder(site: SupportedSite): string {
   return site === "PROGRAMMERS" ? "프로그래머스" : "백준";
 }
 
-function defaultJavaSource(): string {
-  return `class Main {
+type SupportedReviewLanguage = "Java" | "Python" | "C++";
+
+interface LanguageProfile {
+  name: SupportedReviewLanguage;
+  codeFence: "java" | "python" | "cpp";
+  extension: ".java" | ".py" | ".cpp";
+  fallbackTemplate: string;
+}
+
+function resolveLanguageProfile(rawLanguage?: string): LanguageProfile {
+  const raw = (rawLanguage || "").trim().toLowerCase();
+
+  if (/python/.test(raw)) {
+    return {
+      name: "Python",
+      codeFence: "python",
+      extension: ".py",
+      fallbackTemplate: `import sys
+
+def solve() -> None:
+    # TODO: solve
+    pass
+
+if __name__ == "__main__":
+    solve()
+`
+    };
+  }
+
+  if (/c\+\+|cpp|g\+\+|clang\+\+/.test(raw)) {
+    return {
+      name: "C++",
+      codeFence: "cpp",
+      extension: ".cpp",
+      fallbackTemplate: `#include <bits/stdc++.h>
+using namespace std;
+
+int main() {
+    ios::sync_with_stdio(false);
+    cin.tie(nullptr);
+
+    // TODO: solve
+    return 0;
+}
+`
+    };
+  }
+
+  return {
+    name: "Java",
+    codeFence: "java",
+    extension: ".java",
+    fallbackTemplate: `class Main {
     public static void main(String[] args) throws Exception {
         // TODO: solve
     }
 }
-`;
+`
+  };
 }
 
-function formatAiSummary(summaryMarkdown: string, answerCode: string): string {
+function formatAiSummary(summaryMarkdown: string, answerCode: string, codeFence: LanguageProfile["codeFence"]): string {
   return `${summaryMarkdown}
 
 ## 모범 답안 코드
-\`\`\`java
+\`\`\`${codeFence}
 ${answerCode}
 \`\`\`
 `;
@@ -201,18 +253,20 @@ async function handlePullRequestJob(job: WorkerJob, octokit: Octokit): Promise<v
     const siteRoot = buildSiteRootFolder(metadata.site!);
     const fileTitle = sanitizeProblemTitle(problem.title) || "문제";
     const folderPath = `${siteRoot}/${folderName}`;
-    const sourceCode = (await loadPrimaryJavaCode(context)) || defaultJavaSource();
+    const languageProfile = resolveLanguageProfile(metadata.language);
+    const sourceCode =
+      (await loadPrimaryCode(context, [languageProfile.extension])) || languageProfile.fallbackTemplate;
 
     await commitFilesToPrBranch(context, `docs: sync problem assets for ${folderName}`, [
       { path: `${folderPath}/README.md`, content: problemMarkdown },
-      { path: `${folderPath}/${fileTitle}.java`, content: sourceCode }
+      { path: `${folderPath}/${fileTitle}${languageProfile.extension}`, content: sourceCode }
     ]);
 
     const changedFiles = await loadChangedFilesForReview(context);
     const aiReview = await generateAiReview({
       problemMarkdown,
       prBody: pull.body || "",
-      language: metadata.language || "Java",
+      language: languageProfile.name,
       askRequest: metadata.ask,
       changedCodePrompt: buildChangedCodePrompt(changedFiles),
       reviewTargets: changedFiles
@@ -240,7 +294,7 @@ async function handlePullRequestJob(job: WorkerJob, octokit: Octokit): Promise<v
       return;
     }
 
-    const summaryBody = formatAiSummary(aiReview.summaryMarkdown, aiReview.answerCode);
+    const summaryBody = formatAiSummary(aiReview.summaryMarkdown, aiReview.answerCode, languageProfile.codeFence);
     await upsertAiReviewComment(context, summaryBody);
 
     const inlineResult = await createInlineReview(

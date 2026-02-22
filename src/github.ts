@@ -38,8 +38,8 @@ interface FileLineIndex {
   rightLines: number[];
 }
 
-function isGeneratedProblemJavaFile(path: string): boolean {
-  return /^(백준|프로그래머스)\/[^/]+\/[^/]+\.java$/.test(path);
+function isGeneratedProblemCodeFile(path: string): boolean {
+  return /^(백준|프로그래머스)\/[^/]+\/[^/]+\.(java|py|cpp|cc|cxx)$/.test(path);
 }
 async function upsertIssueComment(
   octokit: OctokitClient,
@@ -385,17 +385,17 @@ export async function loadChangedFilesForReview(
 
   const nonGeneratedCodeFiles = files
     .filter((file) => file.status !== "removed")
-    .filter((file) => !isGeneratedProblemJavaFile(file.filename))
-    .filter((file) => /\.(java|kt|py|cpp|c|js|ts|go|rs)$/.test(file.filename))
+    .filter((file) => !isGeneratedProblemCodeFile(file.filename))
+    .filter((file) => /\.(java|kt|py|cpp|cc|cxx|c|js|ts|go|rs)$/.test(file.filename))
     .slice(0, maxFiles);
 
   const codeFiles =
     nonGeneratedCodeFiles.length > 0
-      ? nonGeneratedCodeFiles
-      : files
-          .filter((file) => file.status !== "removed")
-          .filter((file) => /\.(java|kt|py|cpp|c|js|ts|go|rs)$/.test(file.filename))
-          .slice(0, maxFiles);
+        ? nonGeneratedCodeFiles
+        : files
+            .filter((file) => file.status !== "removed")
+            .filter((file) => /\.(java|kt|py|cpp|cc|cxx|c|js|ts|go|rs)$/.test(file.filename))
+            .slice(0, maxFiles);
 
   const results: ChangedFileForReview[] = [];
   for (const file of codeFiles) {
@@ -424,7 +424,22 @@ export function buildChangedCodePrompt(files: ChangedFileForReview[]): string {
     .join("\n\n---\n\n");
 }
 
-export async function loadPrimaryJavaCode(context: PullRequestContext): Promise<string | null> {
+function normalizeExtensions(preferredExtensions: string[]): string[] {
+  return preferredExtensions
+    .map((ext) => ext.trim().toLowerCase())
+    .filter(Boolean)
+    .map((ext) => (ext.startsWith(".") ? ext : `.${ext}`));
+}
+
+function hasAnyExtension(path: string, extensions: string[]): boolean {
+  const lowerPath = path.toLowerCase();
+  return extensions.some((ext) => lowerPath.endsWith(ext));
+}
+
+export async function loadPrimaryCode(
+  context: PullRequestContext,
+  preferredExtensions: string[] = [".java"]
+): Promise<string | null> {
   const owner = context.payload.repository.owner.login;
   const repo = context.payload.repository.name;
   const pullNumber = context.payload.pull_request.number;
@@ -432,14 +447,34 @@ export async function loadPrimaryJavaCode(context: PullRequestContext): Promise<
 
   const files = await listPullFiles(context.octokit, owner, repo, pullNumber);
 
-  const preferredJavaFile = files.find(
-    (file) => file.status !== "removed" && file.filename.endsWith(".java") && !isGeneratedProblemJavaFile(file.filename)
-  );
-  const fallbackJavaFile = files.find((file) => file.status !== "removed" && file.filename.endsWith(".java"));
-  const javaFile = preferredJavaFile ?? fallbackJavaFile;
-  if (!javaFile) return null;
+  const preferred = normalizeExtensions(preferredExtensions);
+  const defaultCodeExtensions = [".java", ".py", ".cpp", ".cc", ".cxx", ".kt", ".js", ".ts", ".go", ".rs", ".c"];
+  const codeExtensions = preferred.length > 0 ? [...new Set([...preferred, ...defaultCodeExtensions])] : defaultCodeExtensions;
 
-  return getTextFileContent(context.octokit, owner, repo, ref, javaFile.filename);
+  const preferredCodeFile = files.find(
+    (file) =>
+      file.status !== "removed" &&
+      hasAnyExtension(file.filename, preferred) &&
+      !isGeneratedProblemCodeFile(file.filename)
+  );
+  const preferredGeneratedFile = files.find(
+    (file) => file.status !== "removed" && hasAnyExtension(file.filename, preferred)
+  );
+
+  const fallbackCodeFile = files.find(
+    (file) =>
+      file.status !== "removed" &&
+      hasAnyExtension(file.filename, codeExtensions) &&
+      !isGeneratedProblemCodeFile(file.filename)
+  );
+  const fallbackGeneratedFile = files.find(
+    (file) => file.status !== "removed" && hasAnyExtension(file.filename, codeExtensions)
+  );
+
+  const targetFile = preferredCodeFile ?? preferredGeneratedFile ?? fallbackCodeFile ?? fallbackGeneratedFile;
+  if (!targetFile) return null;
+
+  return getTextFileContent(context.octokit, owner, repo, ref, targetFile.filename);
 }
 
 export async function commitFilesToPrBranch(
