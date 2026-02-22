@@ -393,24 +393,24 @@ function buildPrBody(problem, config) {
   const problemTags = (problem.problemTags || []).join(", ");
   const level = normalizeText(problem.level);
 
-  return `## Coding Test Metadata
-- Site: ${problem.site}
-- Problem Number: ${problem.problemNumber}
+  return `## Problem Metadata 🔎
+- 사이트 : ${problem.site}
+- 문제 번호 : ${problem.problemNumber}
 - URL: ${problem.problemUrl}
 - URL: ${problem.site === "PROGRAMMERS" ? problem.problemUrl : "https://school.programmers.co.kr/learn/courses/30/lessons/{문제번호}"}
 - Level: ${level}
-- Categories: ${problemTags}
-- Language: ${problem.language}
+- 카테고리 : ${problemTags}
+- 언어 : ${problem.language}
 
-## Solution Summary
+## Solution Summary 📝
 - 핵심 아이디어:
 - 시간 복잡도:
 - 공간 복잡도:
 
-## Notes
+## Notes 💭
 - 구현 시 고민한 점:
 
-## ASK
+## ASK ❓
 - 피드백 요청할 부분: ${defaultAsk}
 `;
 }
