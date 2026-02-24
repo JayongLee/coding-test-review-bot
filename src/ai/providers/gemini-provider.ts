@@ -26,6 +26,11 @@ interface GeminiApiResponse {
   }>;
 }
 
+type GeminiRequestResult =
+  | { kind: "ok"; raw: string }
+  | { kind: "rate_limited" }
+  | { kind: "failed" };
+
 function toPositiveInt(value: string | undefined, fallback: number): number {
   const parsed = Number(value);
   return Number.isFinite(parsed) && parsed > 0 ? Math.floor(parsed) : fallback;
@@ -114,7 +119,8 @@ function buildPrompt(input: AiReviewInput): string {
 - inline_suggestions 최대 6개
 - inline_suggestions.path는 허용 라인에 나온 파일 경로 중 하나와 정확히 일치
 - summary_markdown에는 "현재 접근 복잡도", "대안 접근", "왜 더 좋은지"를 반드시 포함
-- summary_markdown은 핵심 위주로 작성 (너무 장문 금지)
+- summary_markdown은 1200자 이내로 작성
+- answer_code는 220줄 이내로 작성
 - answer_code는 실행 가능한 형태로 작성
 
 허용 라인:
@@ -153,7 +159,7 @@ function buildCompactPrompt(input: AiReviewInput): string {
 제약:
 - inline_suggestions 최대 4개
 - inline_suggestions.path는 허용 라인에 나온 파일 경로 중 하나와 정확히 일치
-- summary_markdown은 4개 섹션만 간결히 작성
+- summary_markdown은 4개 섹션만 간결히 작성 (900자 이내)
 - answer_code는 실행 가능 코드
 
 허용 라인:
@@ -183,6 +189,33 @@ function previewText(text: string, length = 300): string {
   return text.slice(0, length);
 }
 
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function buildResponseSchema() {
+  return {
+    type: "OBJECT",
+    properties: {
+      summary_markdown: { type: "STRING" },
+      answer_code: { type: "STRING" },
+      inline_suggestions: {
+        type: "ARRAY",
+        items: {
+          type: "OBJECT",
+          properties: {
+            path: { type: "STRING" },
+            line: { type: "INTEGER" },
+            body: { type: "STRING" }
+          },
+          required: ["path", "line", "body"]
+        }
+      }
+    },
+    required: ["summary_markdown", "answer_code", "inline_suggestions"]
+  };
+}
+
 export class GeminiProvider implements AiProvider {
   private readonly apiKey: string;
   private readonly model: string;
@@ -192,6 +225,8 @@ export class GeminiProvider implements AiProvider {
   private readonly maxPromptChars: number;
   private readonly maxOutputTokens: number;
   private readonly maxRetries: number;
+  private readonly rateLimitRetries: number;
+  private readonly rateLimitBackoffMs: number;
 
   constructor(apiKey: string, model: string) {
     this.apiKey = apiKey;
@@ -202,9 +237,11 @@ export class GeminiProvider implements AiProvider {
     this.maxPromptChars = toPositiveInt(process.env.GEMINI_MAX_PROMPT_CHARS, 20000);
     this.maxOutputTokens = toPositiveInt(process.env.GEMINI_MAX_OUTPUT_TOKENS, 4096);
     this.maxRetries = toPositiveInt(process.env.GEMINI_MAX_RETRIES, 2);
+    this.rateLimitRetries = toPositiveInt(process.env.GEMINI_RATE_LIMIT_RETRIES, 1);
+    this.rateLimitBackoffMs = toPositiveInt(process.env.GEMINI_RATE_LIMIT_BACKOFF_MS, 1200);
   }
 
-  private async request(model: string, prompt: string, timeoutMs: number): Promise<string | null> {
+  private async request(model: string, prompt: string, timeoutMs: number): Promise<GeminiRequestResult> {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), Number.isFinite(timeoutMs) ? timeoutMs : 30000);
 
@@ -221,43 +258,78 @@ export class GeminiProvider implements AiProvider {
               parts: [{ text: prompt }]
             }
           ],
-          generationConfig: {
-            temperature: 0.2,
-            maxOutputTokens: this.maxOutputTokens,
-            responseMimeType: "application/json"
-          }
+          generationConfig: this.buildGenerationConfig()
         }),
         signal: controller.signal
       });
 
       if (!response.ok) {
         const body = await response.text();
+        if (response.status === 429) {
+          console.error("Gemini request rate limited", {
+            model,
+            timeoutMs,
+            status: response.status,
+            body: body.slice(0, 500)
+          });
+          return { kind: "rate_limited" };
+        }
+
         console.error("Gemini request failed", {
           model,
           timeoutMs,
           status: response.status,
           body: body.slice(0, 500)
         });
-        return null;
+        return { kind: "failed" };
       }
 
       const json = (await response.json()) as GeminiApiResponse;
       const raw = extractTextFromGeminiResponse(json);
       if (!raw) {
         console.error("Gemini response was empty", { model });
-        return null;
+        return { kind: "failed" };
       }
-      return raw;
+      return { kind: "ok", raw };
     } catch (error) {
       console.error("Gemini request failed", {
         model,
         timeoutMs,
         message: error instanceof Error ? error.message : String(error)
       });
-      return null;
+      return { kind: "failed" };
     } finally {
       clearTimeout(timeout);
     }
+  }
+
+  private async requestWithRateLimitRetry(
+    model: string,
+    prompt: string,
+    timeoutMs: number
+  ): Promise<GeminiRequestResult> {
+    let attempt = 0;
+    while (true) {
+      const result = await this.request(model, prompt, timeoutMs);
+      if (result.kind !== "rate_limited") return result;
+
+      if (attempt >= this.rateLimitRetries) {
+        return result;
+      }
+
+      const backoff = this.rateLimitBackoffMs * Math.max(1, attempt + 1);
+      await sleep(backoff);
+      attempt += 1;
+    }
+  }
+
+  private buildGenerationConfig() {
+    return {
+      temperature: 0.2,
+      maxOutputTokens: this.maxOutputTokens,
+      responseMimeType: "application/json",
+      responseSchema: buildResponseSchema()
+    };
   }
 
   async generateReview(input: AiReviewInput): Promise<AiReviewResult | null> {
@@ -267,38 +339,78 @@ export class GeminiProvider implements AiProvider {
       prompts.push(compactPrompt);
     }
 
-    const models: Array<{ name: string; timeoutMs: number }> = [
-      { name: this.model, timeoutMs: this.timeoutMs }
-    ];
-    if (this.fallbackModel && this.fallbackModel !== this.model) {
-      models.push({ name: this.fallbackModel, timeoutMs: this.fallbackTimeoutMs });
-    }
+    const primaryModel = { name: this.model, timeoutMs: this.timeoutMs };
+    const fallbackModel =
+      this.fallbackModel && this.fallbackModel !== this.model
+        ? { name: this.fallbackModel, timeoutMs: this.fallbackTimeoutMs }
+        : null;
 
-    let attempts = 0;
+    let primaryHadTransportFailure = false;
+    let primaryRateLimited = false;
+
     for (const prompt of prompts) {
-      for (const model of models) {
-        attempts += 1;
-        if (attempts > this.maxRetries * models.length) break;
-
-        const raw = await this.request(model.name, prompt, model.timeoutMs);
-        if (!raw) continue;
-
-        const parsed = parseResponse(raw);
-        if (parsed) {
-          return {
-            summaryMarkdown: parsed.summary_markdown.trim(),
-            answerCode: parsed.answer_code.trim(),
-            inlineSuggestions: normalizeInline(parsed.inline_suggestions)
-          };
-        }
-
-        console.error("Gemini response JSON parse failed", {
-          model: model.name,
-          preview: previewText(raw)
-        });
+      const result = await this.requestWithRateLimitRetry(primaryModel.name, prompt, primaryModel.timeoutMs);
+      if (result.kind === "rate_limited") {
+        primaryRateLimited = true;
+        break;
       }
+
+      if (result.kind === "failed") {
+        primaryHadTransportFailure = true;
+        continue;
+      }
+
+      const parsed = parseResponse(result.raw);
+      if (parsed) {
+        return {
+          summaryMarkdown: parsed.summary_markdown.trim(),
+          answerCode: parsed.answer_code.trim(),
+          inlineSuggestions: normalizeInline(parsed.inline_suggestions)
+        };
+      }
+
+      console.error("Gemini response JSON parse failed", {
+        model: primaryModel.name,
+        preview: previewText(result.raw)
+      });
     }
 
+    if (primaryRateLimited) return null;
+    if (!fallbackModel || !primaryHadTransportFailure) return null;
+
+    let fallbackRateLimited = false;
+    let fallbackAttempts = 0;
+
+    for (const prompt of prompts) {
+      if (fallbackAttempts >= this.maxRetries) break;
+      fallbackAttempts += 1;
+
+      const result = await this.requestWithRateLimitRetry(fallbackModel.name, prompt, fallbackModel.timeoutMs);
+      if (result.kind === "rate_limited") {
+        fallbackRateLimited = true;
+        break;
+      }
+
+      if (result.kind === "failed") {
+        continue;
+      }
+
+      const parsed = parseResponse(result.raw);
+      if (parsed) {
+        return {
+          summaryMarkdown: parsed.summary_markdown.trim(),
+          answerCode: parsed.answer_code.trim(),
+          inlineSuggestions: normalizeInline(parsed.inline_suggestions)
+        };
+      }
+
+      console.error("Gemini response JSON parse failed", {
+        model: fallbackModel.name,
+        preview: previewText(result.raw)
+      });
+    }
+
+    if (fallbackRateLimited) return null;
     return null;
   }
 }
