@@ -35,7 +35,7 @@ interface GeminiGenerationConfig {
   temperature: number;
   maxOutputTokens: number;
   responseMimeType: string;
-  responseSchema: ReturnType<typeof buildResponseSchema>;
+  responseSchema: Record<string, unknown>;
 }
 
 function toPositiveInt(value: string | undefined, fallback: number): number {
@@ -64,6 +64,31 @@ function parseResponse(text: string): GeminiResponseShape | null {
         return null;
       }
       return parsed;
+    } catch {
+      return null;
+    }
+  };
+
+  const stripped = stripCodeFence(text);
+  const direct = tryParse(stripped);
+  if (direct) return direct;
+
+  const firstBrace = stripped.indexOf("{");
+  const lastBrace = stripped.lastIndexOf("}");
+  if (firstBrace >= 0 && lastBrace > firstBrace) {
+    return tryParse(stripped.slice(firstBrace, lastBrace + 1));
+  }
+
+  return null;
+}
+
+function parseAnswerCodeOnly(text: string): string | null {
+  const tryParse = (input: string): string | null => {
+    try {
+      const parsed = JSON.parse(input) as { answer_code?: unknown };
+      if (typeof parsed.answer_code !== "string") return null;
+      const normalized = parsed.answer_code.trim();
+      return normalized.length > 0 ? normalized : null;
     } catch {
       return null;
     }
@@ -198,6 +223,17 @@ function previewText(text: string, length = 300): string {
   return text.slice(0, length);
 }
 
+function isUnavailableAnswerCode(answerCode: string): boolean {
+  const normalized = answerCode.trim().toLowerCase();
+  if (!normalized) return true;
+  return (
+    normalized.includes("answer_code unavailable") ||
+    normalized === "n/a" ||
+    normalized === "na" ||
+    normalized === "none"
+  );
+}
+
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
@@ -225,6 +261,16 @@ function buildResponseSchema() {
   };
 }
 
+function buildAnswerCodeSchema() {
+  return {
+    type: "OBJECT",
+    properties: {
+      answer_code: { type: "STRING" }
+    },
+    required: ["answer_code"]
+  };
+}
+
 export class GeminiProvider implements AiProvider {
   private readonly apiKey: string;
   private readonly model: string;
@@ -237,6 +283,7 @@ export class GeminiProvider implements AiProvider {
   private readonly rateLimitRetries: number;
   private readonly rateLimitBackoffMs: number;
   private readonly jsonRepairTimeoutMs: number;
+  private readonly answerCodeTimeoutMs: number;
 
   constructor(apiKey: string, model: string) {
     this.apiKey = apiKey;
@@ -250,13 +297,14 @@ export class GeminiProvider implements AiProvider {
     this.rateLimitRetries = toPositiveInt(process.env.GEMINI_RATE_LIMIT_RETRIES, 1);
     this.rateLimitBackoffMs = toPositiveInt(process.env.GEMINI_RATE_LIMIT_BACKOFF_MS, 1200);
     this.jsonRepairTimeoutMs = toPositiveInt(process.env.GEMINI_JSON_REPAIR_TIMEOUT_MS, 12000);
+    this.answerCodeTimeoutMs = toPositiveInt(process.env.GEMINI_ANSWER_CODE_TIMEOUT_MS, 15000);
   }
 
   private async request(
     model: string,
     prompt: string,
     timeoutMs: number,
-    generationConfig = this.buildGenerationConfig()
+    generationConfig: GeminiGenerationConfig = this.buildGenerationConfig()
   ): Promise<GeminiRequestResult> {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), Number.isFinite(timeoutMs) ? timeoutMs : 30000);
@@ -353,14 +401,85 @@ ${sample}
     return parseResponse(result.raw);
   }
 
+  private buildAnswerCodeOnlyPrompt(input: AiReviewInput): string {
+    return `
+당신은 코딩 테스트 코드 생성 어시스턴트다.
+반드시 JSON 객체 하나만 출력한다. 설명/코드펜스 금지.
+
+응답 스키마:
+{
+  "answer_code": "실행 가능한 ${input.language} 코드"
+}
+
+규칙:
+- answer_code에는 실제 줄바꿈을 사용한다. ("\\n" 문자열 금지)
+- 문제를 해결하는 완전한 코드를 작성한다.
+- 부가 설명은 금지한다.
+
+문제 문서:
+${input.problemMarkdown}
+
+PR 본문:
+${input.prBody}
+
+ASK:
+${input.askRequest?.trim() || "없음"}
+
+변경 코드:
+${input.changedCodePrompt}
+`;
+  }
+
+  private buildAnswerCodeGenerationConfig(): GeminiGenerationConfig {
+    return {
+      temperature: 0.1,
+      maxOutputTokens: Math.min(this.maxOutputTokens, 3072),
+      responseMimeType: "application/json",
+      responseSchema: buildAnswerCodeSchema()
+    };
+  }
+
+  private async recoverAnswerCode(model: string, input: AiReviewInput): Promise<string | null> {
+    const prompt = limitPrompt(this.buildAnswerCodeOnlyPrompt(input), this.maxPromptChars);
+    const result = await this.requestWithRateLimitRetry(
+      model,
+      prompt,
+      this.answerCodeTimeoutMs,
+      this.buildAnswerCodeGenerationConfig()
+    );
+    if (result.kind !== "ok") return null;
+    return parseAnswerCodeOnly(result.raw);
+  }
+
+  private async finalizeResult(
+    model: string,
+    input: AiReviewInput,
+    parsed: GeminiResponseShape
+  ): Promise<AiReviewResult> {
+    let answerCode = parsed.answer_code.trim();
+    if (isUnavailableAnswerCode(answerCode)) {
+      const recovered = await this.recoverAnswerCode(model, input);
+      if (recovered) {
+        answerCode = recovered.trim();
+      }
+    }
+
+    return {
+      summaryMarkdown: parsed.summary_markdown.trim(),
+      answerCode,
+      inlineSuggestions: normalizeInline(parsed.inline_suggestions)
+    };
+  }
+
   private async requestWithRateLimitRetry(
     model: string,
     prompt: string,
-    timeoutMs: number
+    timeoutMs: number,
+    generationConfig?: GeminiGenerationConfig
   ): Promise<GeminiRequestResult> {
     let attempt = 0;
     while (true) {
-      const result = await this.request(model, prompt, timeoutMs);
+      const result = await this.request(model, prompt, timeoutMs, generationConfig);
       if (result.kind !== "rate_limited") return result;
 
       if (attempt >= this.rateLimitRetries) {
@@ -412,11 +531,7 @@ ${sample}
 
       const parsed = parseResponse(result.raw);
       if (parsed) {
-        return {
-          summaryMarkdown: parsed.summary_markdown.trim(),
-          answerCode: parsed.answer_code.trim(),
-          inlineSuggestions: normalizeInline(parsed.inline_suggestions)
-        };
+        return this.finalizeResult(primaryModel.name, input, parsed);
       }
 
       console.error("Gemini response JSON parse failed", {
@@ -426,11 +541,7 @@ ${sample}
 
       const repaired = await this.repairMalformedJson(primaryModel.name, result.raw);
       if (repaired) {
-        return {
-          summaryMarkdown: repaired.summary_markdown.trim(),
-          answerCode: repaired.answer_code.trim(),
-          inlineSuggestions: normalizeInline(repaired.inline_suggestions)
-        };
+        return this.finalizeResult(primaryModel.name, input, repaired);
       }
     }
 
@@ -456,11 +567,7 @@ ${sample}
 
       const parsed = parseResponse(result.raw);
       if (parsed) {
-        return {
-          summaryMarkdown: parsed.summary_markdown.trim(),
-          answerCode: parsed.answer_code.trim(),
-          inlineSuggestions: normalizeInline(parsed.inline_suggestions)
-        };
+        return this.finalizeResult(fallbackModel.name, input, parsed);
       }
 
       console.error("Gemini response JSON parse failed", {
@@ -470,11 +577,7 @@ ${sample}
 
       const repaired = await this.repairMalformedJson(fallbackModel.name, result.raw);
       if (repaired) {
-        return {
-          summaryMarkdown: repaired.summary_markdown.trim(),
-          answerCode: repaired.answer_code.trim(),
-          inlineSuggestions: normalizeInline(repaired.inline_suggestions)
-        };
+        return this.finalizeResult(fallbackModel.name, input, repaired);
       }
     }
 
