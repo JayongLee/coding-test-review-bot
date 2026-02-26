@@ -116,12 +116,42 @@ int main() {
   };
 }
 
+function stripOuterCodeFence(code: string): string {
+  const trimmed = code.trim();
+  if (!trimmed.startsWith("```")) return trimmed;
+  return trimmed.replace(/^```[a-zA-Z0-9_+-]*\s*/i, "").replace(/\s*```$/, "").trim();
+}
+
+function normalizeAnswerCodeForDisplay(answerCode: string): string {
+  let normalized = stripOuterCodeFence(answerCode);
+
+  // Some model responses return escaped newlines as literal "\n" sequences.
+  if (!normalized.includes("\n") && /\\n|\\r\\n/.test(normalized)) {
+    normalized = normalized.replace(/\\r\\n/g, "\n").replace(/\\n/g, "\n").replace(/\\t/g, "\t");
+  }
+
+  // Safety: occasionally the whole code is wrapped as a JSON string literal.
+  if (normalized.startsWith('"') && normalized.endsWith('"')) {
+    try {
+      const decoded = JSON.parse(normalized);
+      if (typeof decoded === "string" && decoded.trim().length > 0) {
+        normalized = decoded;
+      }
+    } catch {
+      // ignore and keep original
+    }
+  }
+
+  return normalized.trim();
+}
+
 function formatAiSummary(summaryMarkdown: string, answerCode: string, codeFence: LanguageProfile["codeFence"]): string {
+  const normalizedAnswerCode = normalizeAnswerCodeForDisplay(answerCode);
   return `${summaryMarkdown}
 
 ## 모범 답안 코드
 \`\`\`${codeFence}
-${answerCode}
+${normalizedAnswerCode}
 \`\`\`
 `;
 }
