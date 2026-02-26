@@ -31,6 +31,13 @@ type GeminiRequestResult =
   | { kind: "rate_limited" }
   | { kind: "failed" };
 
+interface GeminiGenerationConfig {
+  temperature: number;
+  maxOutputTokens: number;
+  responseMimeType: string;
+  responseSchema: ReturnType<typeof buildResponseSchema>;
+}
+
 function toPositiveInt(value: string | undefined, fallback: number): number {
   const parsed = Number(value);
   return Number.isFinite(parsed) && parsed > 0 ? Math.floor(parsed) : fallback;
@@ -229,6 +236,7 @@ export class GeminiProvider implements AiProvider {
   private readonly maxRetries: number;
   private readonly rateLimitRetries: number;
   private readonly rateLimitBackoffMs: number;
+  private readonly jsonRepairTimeoutMs: number;
 
   constructor(apiKey: string, model: string) {
     this.apiKey = apiKey;
@@ -241,9 +249,15 @@ export class GeminiProvider implements AiProvider {
     this.maxRetries = toPositiveInt(process.env.GEMINI_MAX_RETRIES, 2);
     this.rateLimitRetries = toPositiveInt(process.env.GEMINI_RATE_LIMIT_RETRIES, 1);
     this.rateLimitBackoffMs = toPositiveInt(process.env.GEMINI_RATE_LIMIT_BACKOFF_MS, 1200);
+    this.jsonRepairTimeoutMs = toPositiveInt(process.env.GEMINI_JSON_REPAIR_TIMEOUT_MS, 12000);
   }
 
-  private async request(model: string, prompt: string, timeoutMs: number): Promise<GeminiRequestResult> {
+  private async request(
+    model: string,
+    prompt: string,
+    timeoutMs: number,
+    generationConfig = this.buildGenerationConfig()
+  ): Promise<GeminiRequestResult> {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), Number.isFinite(timeoutMs) ? timeoutMs : 30000);
 
@@ -260,7 +274,7 @@ export class GeminiProvider implements AiProvider {
               parts: [{ text: prompt }]
             }
           ],
-          generationConfig: this.buildGenerationConfig()
+          generationConfig
         }),
         signal: controller.signal
       });
@@ -303,6 +317,40 @@ export class GeminiProvider implements AiProvider {
     } finally {
       clearTimeout(timeout);
     }
+  }
+
+  private buildJsonRepairPrompt(raw: string): string {
+    const sample = raw.slice(0, 14000);
+    return `
+다음 텍스트를 **의미를 유지한 채** 유효한 JSON 객체 1개로 복구하라.
+출력은 JSON만 허용하며 코드펜스/설명 금지.
+
+필수 키:
+- summary_markdown (string)
+- answer_code (string)
+- inline_suggestions (array of {path:string,line:number,body:string})
+
+규칙:
+- 누락된 값이 있으면 최소값으로 채운다.
+  - summary_markdown: "리뷰 요약 생성 중 일부 정보가 손실되었습니다."
+  - answer_code: "/* answer_code unavailable */"
+  - inline_suggestions: []
+- inline_suggestions.line은 정수만 허용
+- 반드시 JSON 문법을 지켜라.
+
+원문:
+${sample}
+`;
+  }
+
+  private async repairMalformedJson(model: string, raw: string): Promise<GeminiResponseShape | null> {
+    const result = await this.requestWithRateLimitRetry(
+      model,
+      this.buildJsonRepairPrompt(raw),
+      this.jsonRepairTimeoutMs
+    );
+    if (result.kind !== "ok") return null;
+    return parseResponse(result.raw);
   }
 
   private async requestWithRateLimitRetry(
@@ -375,6 +423,15 @@ export class GeminiProvider implements AiProvider {
         model: primaryModel.name,
         preview: previewText(result.raw)
       });
+
+      const repaired = await this.repairMalformedJson(primaryModel.name, result.raw);
+      if (repaired) {
+        return {
+          summaryMarkdown: repaired.summary_markdown.trim(),
+          answerCode: repaired.answer_code.trim(),
+          inlineSuggestions: normalizeInline(repaired.inline_suggestions)
+        };
+      }
     }
 
     if (primaryRateLimited) return null;
@@ -410,6 +467,15 @@ export class GeminiProvider implements AiProvider {
         model: fallbackModel.name,
         preview: previewText(result.raw)
       });
+
+      const repaired = await this.repairMalformedJson(fallbackModel.name, result.raw);
+      if (repaired) {
+        return {
+          summaryMarkdown: repaired.summary_markdown.trim(),
+          answerCode: repaired.answer_code.trim(),
+          inlineSuggestions: normalizeInline(repaired.inline_suggestions)
+        };
+      }
     }
 
     if (fallbackRateLimited) return null;
