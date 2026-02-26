@@ -122,13 +122,148 @@ function stripOuterCodeFence(code: string): string {
   return trimmed.replace(/^```[a-zA-Z0-9_+-]*\s*/i, "").replace(/\s*```$/, "").trim();
 }
 
-function normalizeAnswerCodeForDisplay(answerCode: string): string {
-  let normalized = stripOuterCodeFence(answerCode);
+function decodeEscapedLayoutOutsideStrings(code: string): string {
+  let out = "";
+  let inSingle = false;
+  let inDouble = false;
+  let escaped = false;
 
-  // Some model responses return escaped newlines as literal "\n" sequences.
-  if (!normalized.includes("\n") && /\\n|\\r\\n/.test(normalized)) {
-    normalized = normalized.replace(/\\r\\n/g, "\n").replace(/\\n/g, "\n").replace(/\\t/g, "\t");
+  for (let i = 0; i < code.length; i += 1) {
+    const ch = code[i];
+    const next = i + 1 < code.length ? code[i + 1] : "";
+
+    if (escaped) {
+      out += ch;
+      escaped = false;
+      continue;
+    }
+
+    if (ch === "\\") {
+      if (!inSingle && !inDouble) {
+        if (next === "n") {
+          out += "\n";
+          i += 1;
+          continue;
+        }
+        if (next === "r") {
+          i += 1;
+          continue;
+        }
+        if (next === "t") {
+          out += "  ";
+          i += 1;
+          continue;
+        }
+      }
+      out += ch;
+      escaped = true;
+      continue;
+    }
+
+    if (ch === "'" && !inDouble) {
+      inSingle = !inSingle;
+      out += ch;
+      continue;
+    }
+
+    if (ch === '"' && !inSingle) {
+      inDouble = !inDouble;
+      out += ch;
+      continue;
+    }
+
+    out += ch;
   }
+
+  return out;
+}
+
+function formatMinifiedCStyleCode(code: string): string {
+  const trimmed = code.trim();
+  if (trimmed.includes("\n")) return trimmed;
+  if (trimmed.length < 200) return trimmed;
+
+  let raw = "";
+  let inSingle = false;
+  let inDouble = false;
+  let escaped = false;
+  let parenDepth = 0;
+
+  for (let i = 0; i < trimmed.length; i += 1) {
+    const ch = trimmed[i];
+
+    if (escaped) {
+      raw += ch;
+      escaped = false;
+      continue;
+    }
+
+    if (ch === "\\") {
+      raw += ch;
+      escaped = true;
+      continue;
+    }
+
+    if (ch === "'" && !inDouble) {
+      inSingle = !inSingle;
+      raw += ch;
+      continue;
+    }
+
+    if (ch === '"' && !inSingle) {
+      inDouble = !inDouble;
+      raw += ch;
+      continue;
+    }
+
+    if (!inSingle && !inDouble) {
+      if (ch === "(") {
+        parenDepth += 1;
+      } else if (ch === ")") {
+        parenDepth = Math.max(parenDepth - 1, 0);
+      }
+
+      if (ch === "{") {
+        raw += "{\n";
+        continue;
+      }
+      if (ch === "}") {
+        raw += "\n}\n";
+        continue;
+      }
+      if (ch === ";" && parenDepth === 0) {
+        raw += ";\n";
+        continue;
+      }
+    }
+
+    raw += ch;
+  }
+
+  const lines = raw
+    .split("\n")
+    .map((line) => line.trim())
+    .filter((line) => line.length > 0);
+
+  const formatted: string[] = [];
+  let indent = 0;
+  for (const line of lines) {
+    if (line.startsWith("}")) {
+      indent = Math.max(indent - 1, 0);
+    }
+
+    formatted.push(`${"  ".repeat(indent)}${line}`);
+
+    const opens = (line.match(/{/g) || []).length;
+    const closes = (line.match(/}/g) || []).length;
+    indent = Math.max(indent + opens - closes, 0);
+  }
+
+  return formatted.join("\n");
+}
+
+function normalizeAnswerCodeForDisplay(answerCode: string, codeFence: LanguageProfile["codeFence"]): string {
+  let normalized = stripOuterCodeFence(answerCode);
 
   // Safety: occasionally the whole code is wrapped as a JSON string literal.
   if (normalized.startsWith('"') && normalized.endsWith('"')) {
@@ -142,11 +277,17 @@ function normalizeAnswerCodeForDisplay(answerCode: string): string {
     }
   }
 
+  normalized = decodeEscapedLayoutOutsideStrings(normalized);
+
+  if ((codeFence === "java" || codeFence === "cpp") && !normalized.includes("\n")) {
+    normalized = formatMinifiedCStyleCode(normalized);
+  }
+
   return normalized.trim();
 }
 
 function formatAiSummary(summaryMarkdown: string, answerCode: string, codeFence: LanguageProfile["codeFence"]): string {
-  const normalizedAnswerCode = normalizeAnswerCodeForDisplay(answerCode);
+  const normalizedAnswerCode = normalizeAnswerCodeForDisplay(answerCode, codeFence);
   return `${summaryMarkdown}
 
 ## 모범 답안 코드
