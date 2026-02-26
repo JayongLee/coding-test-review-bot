@@ -154,6 +154,8 @@ function buildPrompt(input: AiReviewInput): string {
 - summary_markdown은 1200자 이내로 작성
 - answer_code는 220줄 이내로 작성
 - answer_code는 실제 줄바꿈을 사용한 여러 줄 코드로 작성 ("\\n" 문자열로 이스케이프하지 않음)
+- inline_suggestions가 1개 이상이면 answer_code에는 그 개선사항이 반드시 반영되어야 함
+- answer_code는 입력 코드와 완전히 동일한 코드를 그대로 복사하면 안 됨
 - answer_code는 실행 가능한 형태로 작성
 
 허용 라인:
@@ -194,6 +196,7 @@ function buildCompactPrompt(input: AiReviewInput): string {
 - inline_suggestions.path는 허용 라인에 나온 파일 경로 중 하나와 정확히 일치
 - summary_markdown은 4개 섹션만 간결히 작성 (900자 이내)
 - answer_code는 실제 줄바꿈을 사용한 여러 줄 코드로 작성 ("\\n" 문자열 금지)
+- inline_suggestions가 1개 이상이면 answer_code에는 그 개선사항이 반드시 반영되어야 함
 - answer_code는 실행 가능 코드
 
 허용 라인:

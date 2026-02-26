@@ -297,6 +297,27 @@ ${normalizedAnswerCode}
 `;
 }
 
+function normalizeForCodeComparison(code: string): string {
+  return code.replace(/\s+/g, "");
+}
+
+function isAnswerCodeTooSimilar(answerCode: string, originalCode: string): boolean {
+  if (!answerCode || !originalCode) return false;
+  const normalizedAnswer = normalizeForCodeComparison(answerCode);
+  const normalizedOriginal = normalizeForCodeComparison(originalCode);
+  if (!normalizedAnswer || !normalizedOriginal) return false;
+  return normalizedAnswer === normalizedOriginal;
+}
+
+function buildForcedRewriteAsk(userAsk?: string): string {
+  const extra = [
+    "모범답안(answer_code)은 원본 코드와 동일하면 안 됩니다.",
+    "inline_suggestions에 제안한 개선점을 실제 코드에 반영해 주세요.",
+    "성능/가독성/안정성 중 최소 1개 이상 개선이 드러나야 합니다."
+  ].join(" ");
+  return userAsk?.trim() ? `${userAsk.trim()}\n\n[추가 요구] ${extra}` : extra;
+}
+
 function buildPullRequestContext(
   octokit: Octokit,
   owner: string,
@@ -434,7 +455,7 @@ async function handlePullRequestJob(job: WorkerJob, octokit: Octokit): Promise<v
     ]);
 
     const changedFiles = await loadChangedFilesForReview(context);
-    const aiReview = await generateAiReview({
+    let aiReview = await generateAiReview({
       problemMarkdown,
       prBody: pull.body || "",
       language: languageProfile.name,
@@ -463,6 +484,25 @@ async function handlePullRequestJob(job: WorkerJob, octokit: Octokit): Promise<v
         `AI 리뷰를 생성하지 못했습니다. (provider=${provider}, model=${model}, timeoutMs=${timeout}, apiKey=${hasKey ? "set" : "missing"})\nCloudWatch Worker 로그에서 provider 실패 메시지를 확인해주세요.`
       );
       return;
+    }
+
+    // If model returns code identical to the submitted code while giving improvements,
+    // request one forced rewrite pass so answer_code reflects suggested changes.
+    const shouldForceRewrite =
+      aiReview.inlineSuggestions.length > 0 && isAnswerCodeTooSimilar(aiReview.answerCode, sourceCode);
+    if (shouldForceRewrite) {
+      const rewritten = await generateAiReview({
+        problemMarkdown,
+        prBody: pull.body || "",
+        language: languageProfile.name,
+        askRequest: buildForcedRewriteAsk(metadata.ask),
+        changedCodePrompt: buildChangedCodePrompt(changedFiles),
+        reviewTargets: changedFiles
+      });
+
+      if (rewritten && !isAnswerCodeTooSimilar(rewritten.answerCode, sourceCode)) {
+        aiReview = rewritten;
+      }
     }
 
     const summaryBody = formatAiSummary(aiReview.summaryMarkdown, aiReview.answerCode, languageProfile.codeFence);
