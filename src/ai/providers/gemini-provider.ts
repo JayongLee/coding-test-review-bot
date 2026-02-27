@@ -132,10 +132,13 @@ function buildPrompt(input: AiReviewInput): string {
 반드시 JSON 객체 하나만 출력한다. Markdown/설명문/코드펜스 금지.
 
 필수 작업:
-1) 현재 풀이를 분석하고 더 좋은 접근을 제안한다.
-2) 모범 답안 코드를 ${input.language} 기준으로 작성한다.
-3) 인라인 코멘트는 아래 "허용 라인"에 있는 라인 번호만 사용한다.
-4) 사용자가 ASK 필드에 남긴 요청이 있으면 해당 요청을 우선 반영한다.
+1) 제출 코드는 "정답(AC)"이라고 가정하고, 왜 정답인지 핵심 근거를 설명한다.
+2) 시간/공간 복잡도를 평가하고, 병목 가능성을 짚는다.
+3) 더 나은 접근(복잡도 개선 또는 구현 단순화)이 가능한지 검토한다.
+4) 코드 품질(변수명, 변수 선언 위치/스코프, 중복 로직, 매직넘버)을 리뷰한다.
+5) 모범 답안 코드를 ${input.language} 기준으로 작성한다.
+6) 인라인 코멘트는 아래 "허용 라인"에 있는 라인 번호만 사용한다.
+7) 사용자가 ASK 필드에 남긴 요청이 있으면 해당 요청을 우선 반영한다.
 
 응답 JSON 스키마:
 {
@@ -150,12 +153,13 @@ function buildPrompt(input: AiReviewInput): string {
 - JSON 외 텍스트 출력 금지
 - inline_suggestions 최대 6개
 - inline_suggestions.path는 허용 라인에 나온 파일 경로 중 하나와 정확히 일치
-- summary_markdown에는 "현재 접근 복잡도", "대안 접근", "왜 더 좋은지"를 반드시 포함
+- summary_markdown에는 "왜 정답인지", "시간/공간 복잡도 평가", "코드 품질 개선 포인트", "대안 접근"을 반드시 포함
 - summary_markdown은 1200자 이내로 작성
 - answer_code는 220줄 이내로 작성
 - answer_code는 실제 줄바꿈을 사용한 여러 줄 코드로 작성 ("\\n" 문자열로 이스케이프하지 않음)
 - inline_suggestions가 1개 이상이면 answer_code에는 그 개선사항이 반드시 반영되어야 함
 - answer_code는 입력 코드와 완전히 동일한 코드를 그대로 복사하면 안 됨
+- 현재 알고리즘이 이미 최적이면, 알고리즘은 유지하되 코드 품질 개선(명확한 변수명/최소 스코프/구조 정리)을 반영
 - answer_code는 실행 가능한 형태로 작성
 
 허용 라인:
@@ -195,6 +199,7 @@ function buildCompactPrompt(input: AiReviewInput): string {
 - inline_suggestions 최대 4개
 - inline_suggestions.path는 허용 라인에 나온 파일 경로 중 하나와 정확히 일치
 - summary_markdown은 4개 섹션만 간결히 작성 (900자 이내)
+- summary_markdown은 "왜 정답인지/복잡도/코드 품질/대안 접근"을 각각 한 단락 이상 포함
 - answer_code는 실제 줄바꿈을 사용한 여러 줄 코드로 작성 ("\\n" 문자열 금지)
 - inline_suggestions가 1개 이상이면 answer_code에는 그 개선사항이 반드시 반영되어야 함
 - answer_code는 실행 가능 코드
