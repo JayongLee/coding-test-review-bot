@@ -8,6 +8,8 @@ import type {
 
 interface GeminiResponseShape {
   summary_markdown: string;
+  time_complexity: string;
+  space_complexity: string;
   answer_code: string;
   inline_suggestions: Array<{
     path: string;
@@ -63,7 +65,11 @@ function parseResponse(text: string): GeminiResponseShape | null {
       if (!parsed.summary_markdown || !parsed.answer_code || !Array.isArray(parsed.inline_suggestions)) {
         return null;
       }
-      return parsed;
+      return {
+        ...parsed,
+        time_complexity: parsed.time_complexity?.trim() || "O(unknown)",
+        space_complexity: parsed.space_complexity?.trim() || "O(unknown)"
+      };
     } catch {
       return null;
     }
@@ -143,6 +149,8 @@ function buildPrompt(input: AiReviewInput): string {
 응답 JSON 스키마:
 {
   "summary_markdown": "## 총평\\n...\\n## 더 좋은 접근 제안\\n...\\n## 코드 레벨 개선 포인트\\n...\\n## 놓치기 쉬운 테스트 케이스\\n...",
+  "time_complexity": "O(...)",
+  "space_complexity": "O(...)",
   "answer_code": "모범 답안 코드 문자열",
   "inline_suggestions": [
     {"path":"허용 라인에 있는 정확한 파일 경로","line":23,"body":"개선 코멘트"}
@@ -154,6 +162,7 @@ function buildPrompt(input: AiReviewInput): string {
 - inline_suggestions 최대 6개
 - inline_suggestions.path는 허용 라인에 나온 파일 경로 중 하나와 정확히 일치
 - summary_markdown에는 "왜 정답인지", "시간/공간 복잡도 평가", "코드 품질 개선 포인트", "대안 접근"을 반드시 포함
+- time_complexity/space_complexity는 Big-O 표기 포함 (예: O(N log N), O(H*N*M))
 - summary_markdown은 1200자 이내로 작성
 - answer_code는 220줄 이내로 작성
 - answer_code는 실제 줄바꿈을 사용한 여러 줄 코드로 작성 ("\\n" 문자열로 이스케이프하지 않음)
@@ -191,6 +200,8 @@ function buildCompactPrompt(input: AiReviewInput): string {
 응답 스키마:
 {
   "summary_markdown": "마크다운 문자열",
+  "time_complexity": "O(...)",
+  "space_complexity": "O(...)",
   "answer_code": "코드 문자열",
   "inline_suggestions": [{"path":"파일경로","line":1,"body":"코멘트"}]
 }
@@ -200,6 +211,7 @@ function buildCompactPrompt(input: AiReviewInput): string {
 - inline_suggestions.path는 허용 라인에 나온 파일 경로 중 하나와 정확히 일치
 - summary_markdown은 4개 섹션만 간결히 작성 (900자 이내)
 - summary_markdown은 "왜 정답인지/복잡도/코드 품질/대안 접근"을 각각 한 단락 이상 포함
+- time_complexity/space_complexity는 Big-O 표기 포함
 - answer_code는 실제 줄바꿈을 사용한 여러 줄 코드로 작성 ("\\n" 문자열 금지)
 - inline_suggestions가 1개 이상이면 answer_code에는 그 개선사항이 반드시 반영되어야 함
 - answer_code는 실행 가능 코드
@@ -251,6 +263,8 @@ function buildResponseSchema() {
     type: "OBJECT",
     properties: {
       summary_markdown: { type: "STRING" },
+      time_complexity: { type: "STRING" },
+      space_complexity: { type: "STRING" },
       answer_code: { type: "STRING" },
       inline_suggestions: {
         type: "ARRAY",
@@ -265,7 +279,13 @@ function buildResponseSchema() {
         }
       }
     },
-    required: ["summary_markdown", "answer_code", "inline_suggestions"]
+    required: [
+      "summary_markdown",
+      "time_complexity",
+      "space_complexity",
+      "answer_code",
+      "inline_suggestions"
+    ]
   };
 }
 
@@ -383,12 +403,16 @@ export class GeminiProvider implements AiProvider {
 
 필수 키:
 - summary_markdown (string)
+- time_complexity (string)
+- space_complexity (string)
 - answer_code (string)
 - inline_suggestions (array of {path:string,line:number,body:string})
 
 규칙:
 - 누락된 값이 있으면 최소값으로 채운다.
   - summary_markdown: "리뷰 요약 생성 중 일부 정보가 손실되었습니다."
+  - time_complexity: "O(unknown)"
+  - space_complexity: "O(unknown)"
   - answer_code: "/* answer_code unavailable */"
   - inline_suggestions: []
 - inline_suggestions.line은 정수만 허용
@@ -474,6 +498,8 @@ ${input.changedCodePrompt}
 
     return {
       summaryMarkdown: parsed.summary_markdown.trim(),
+      timeComplexity: parsed.time_complexity.trim(),
+      spaceComplexity: parsed.space_complexity.trim(),
       answerCode,
       inlineSuggestions: normalizeInline(parsed.inline_suggestions)
     };

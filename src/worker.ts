@@ -286,9 +286,25 @@ function normalizeAnswerCodeForDisplay(answerCode: string, codeFence: LanguagePr
   return normalized.trim();
 }
 
-function formatAiSummary(summaryMarkdown: string, answerCode: string, codeFence: LanguageProfile["codeFence"]): string {
+function normalizeComplexity(value: string | undefined): string {
+  const normalized = (value || "").trim();
+  if (!normalized) return "O(unknown)";
+  return normalized;
+}
+
+function formatAiSummary(
+  summaryMarkdown: string,
+  timeComplexity: string,
+  spaceComplexity: string,
+  answerCode: string,
+  codeFence: LanguageProfile["codeFence"]
+): string {
   const normalizedAnswerCode = normalizeAnswerCodeForDisplay(answerCode, codeFence);
   return `${summaryMarkdown}
+
+## 시간/공간 복잡도 평가
+- 시간 복잡도: ${normalizeComplexity(timeComplexity)}
+- 공간 복잡도: ${normalizeComplexity(spaceComplexity)}
 
 ## 모범 답안 코드
 \`\`\`${codeFence}
@@ -505,7 +521,13 @@ async function handlePullRequestJob(job: WorkerJob, octokit: Octokit): Promise<v
       }
     }
 
-    const summaryBody = formatAiSummary(aiReview.summaryMarkdown, aiReview.answerCode, languageProfile.codeFence);
+    const summaryBody = formatAiSummary(
+      aiReview.summaryMarkdown,
+      aiReview.timeComplexity,
+      aiReview.spaceComplexity,
+      aiReview.answerCode,
+      languageProfile.codeFence
+    );
     await upsertAiReviewComment(context, summaryBody);
 
     const inlineResult = await createInlineReview(

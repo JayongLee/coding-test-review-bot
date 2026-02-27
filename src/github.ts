@@ -34,8 +34,11 @@ export interface InlineReviewResult {
 interface FileLineIndex {
   path: string;
   normalizedPath: string;
+  loosePathKey: string;
   basename: string;
+  looseBasenameKey: string;
   rightLines: number[];
+  addedLines: number[];
 }
 
 function isGeneratedProblemCodeFile(path: string): boolean {
@@ -152,19 +155,33 @@ function normalizePathForMatch(path: string): string {
   let normalized = path.trim().replace(/\\/g, "/");
   normalized = normalized.replace(/^\.\//, "");
   normalized = normalized.replace(/^\/+/, "");
+  normalized = normalized.replace(/[`"'“”‘’]/g, "");
+  normalized = normalized.normalize("NFKC");
   return normalized;
+}
+
+function toLoosePathKey(path: string): string {
+  return normalizePathForMatch(path)
+    .toLowerCase()
+    .replace(/\s+/gu, "")
+    .replace(/[._-]/g, "");
 }
 
 function buildFileLineIndexes(changedFiles: ChangedFileForReview[]): FileLineIndex[] {
   return changedFiles.map((file) => {
     const normalizedPath = normalizePathForMatch(file.path);
+    const loosePathKey = toLoosePathKey(file.path);
     const basename = normalizedPath.split("/").pop() || normalizedPath;
+    const looseBasenameKey = toLoosePathKey(basename);
     const rightLines = parseRightSideLinesFromPatch(file.patch);
     return {
       path: file.path,
       normalizedPath,
       basename,
-      rightLines
+      loosePathKey,
+      looseBasenameKey,
+      rightLines,
+      addedLines: file.addedLines
     };
   });
 }
@@ -172,9 +189,13 @@ function buildFileLineIndexes(changedFiles: ChangedFileForReview[]): FileLineInd
 function resolvePathForInlineComment(requestedPath: string, indexes: FileLineIndex[]): string | null {
   const requested = normalizePathForMatch(requestedPath);
   if (!requested) return null;
+  const requestedLoose = toLoosePathKey(requested);
 
   const exact = indexes.find((item) => item.normalizedPath === requested);
   if (exact) return exact.path;
+
+  const exactLoose = indexes.find((item) => item.loosePathKey === requestedLoose);
+  if (exactLoose) return exactLoose.path;
 
   const suffixMatched = indexes.filter(
     (item) =>
@@ -182,22 +203,39 @@ function resolvePathForInlineComment(requestedPath: string, indexes: FileLineInd
   );
   if (suffixMatched.length === 1) return suffixMatched[0].path;
 
+  const suffixLooseMatched = indexes.filter(
+    (item) => item.loosePathKey.endsWith(requestedLoose) || requestedLoose.endsWith(item.loosePathKey)
+  );
+  if (suffixLooseMatched.length === 1) return suffixLooseMatched[0].path;
+
   const basename = requested.split("/").pop() || requested;
-  const basenameMatched = indexes.filter((item) => item.basename === basename);
+  const basenameLoose = toLoosePathKey(basename);
+  const basenameMatched = indexes.filter(
+    (item) => item.basename === basename || item.looseBasenameKey === basenameLoose
+  );
   if (basenameMatched.length === 1) return basenameMatched[0].path;
+  if (basenameMatched.length > 1) {
+    const requestedExt = basename.includes(".") ? basename.slice(basename.lastIndexOf(".")) : "";
+    if (requestedExt) {
+      const extMatched = basenameMatched.filter((item) => item.basename.endsWith(requestedExt));
+      if (extMatched.length === 1) return extMatched[0].path;
+    }
+    return basenameMatched[0].path;
+  }
 
   if (indexes.length === 1) return indexes[0].path;
   return null;
 }
 
-function findClosestReviewLine(targetLine: number, rightLines: number[]): number | null {
+function findClosestReviewLine(targetLine: number, rightLines: number[], addedLines: number[]): number | null {
   if (!Number.isInteger(targetLine) || targetLine <= 0) return null;
-  if (rightLines.length === 0) return null;
-  if (rightLines.includes(targetLine)) return targetLine;
+  const candidates = rightLines.length > 0 ? rightLines : addedLines;
+  if (candidates.length === 0) return null;
+  if (candidates.includes(targetLine)) return targetLine;
 
-  let bestLine = rightLines[0];
+  let bestLine = candidates[0];
   let bestDistance = Math.abs(bestLine - targetLine);
-  for (const line of rightLines) {
+  for (const line of candidates) {
     const distance = Math.abs(line - targetLine);
     if (distance < bestDistance) {
       bestLine = line;
@@ -205,8 +243,6 @@ function findClosestReviewLine(targetLine: number, rightLines: number[]): number
     }
   }
 
-  // 과도한 점프를 막기 위해 너무 먼 라인은 버린다.
-  if (bestDistance > 20) return null;
   return bestLine;
 }
 
@@ -556,6 +592,7 @@ export async function createInlineReview(
 
   const indexes = buildFileLineIndexes(changedFiles);
   const rightLinesByPath = new Map(indexes.map((item) => [item.path, item.rightLines]));
+  const addedLinesByPath = new Map(indexes.map((item) => [item.path, item.addedLines]));
 
   const resolved = new Map<string, InlineReviewComment>();
   for (const item of comments) {
@@ -566,10 +603,11 @@ export async function createInlineReview(
     if (!resolvedPath) continue;
 
     const rightLines = rightLinesByPath.get(resolvedPath) || [];
-    const resolvedLine = findClosestReviewLine(item.line, rightLines);
+    const addedLines = addedLinesByPath.get(resolvedPath) || [];
+    const resolvedLine = findClosestReviewLine(item.line, rightLines, addedLines);
     if (!resolvedLine) continue;
 
-    const key = `${resolvedPath}:${resolvedLine}`;
+    const key = `${resolvedPath}:${resolvedLine}:${body}`;
     resolved.set(key, {
       path: resolvedPath,
       line: resolvedLine,

@@ -22,6 +22,8 @@ export interface InlineSuggestion {
 
 export interface AiReviewResult {
   summaryMarkdown: string;
+  timeComplexity: string;
+  spaceComplexity: string;
   answerCode: string;
   inlineSuggestions: InlineSuggestion[];
 }

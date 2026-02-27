@@ -9,6 +9,8 @@ import type {
 
 interface OpenAiResponseShape {
   summary_markdown: string;
+  time_complexity: string;
+  space_complexity: string;
   answer_code: string;
   inline_suggestions: Array<{
     path: string;
@@ -36,7 +38,11 @@ function parseResponse(text: string): OpenAiResponseShape | null {
     if (!parsed.summary_markdown || !parsed.answer_code || !Array.isArray(parsed.inline_suggestions)) {
       return null;
     }
-    return parsed;
+    return {
+      ...parsed,
+      time_complexity: parsed.time_complexity?.trim() || "O(unknown)",
+      space_complexity: parsed.space_complexity?.trim() || "O(unknown)"
+    };
   } catch {
     return null;
   }
@@ -82,6 +88,8 @@ export class OpenAiProvider implements AiProvider {
 응답 JSON 스키마:
 {
   "summary_markdown": "## 총평\\n...\\n## 더 좋은 접근 제안\\n...\\n## 코드 레벨 개선 포인트\\n...\\n## 놓치기 쉬운 테스트 케이스\\n...",
+  "time_complexity": "O(...)",
+  "space_complexity": "O(...)",
   "answer_code": "모범 답안 코드 문자열",
   "inline_suggestions": [
     {"path":"허용 라인에 있는 정확한 파일 경로","line":23,"body":"개선 코멘트"}
@@ -92,6 +100,7 @@ export class OpenAiProvider implements AiProvider {
 - inline_suggestions 최대 6개
 - inline_suggestions.path는 허용 라인에 나온 파일 경로 중 하나와 정확히 일치
 - summary_markdown에는 "왜 정답인지", "시간/공간 복잡도 평가", "코드 품질 개선 포인트", "대안 접근"을 반드시 포함
+- time_complexity/space_complexity는 Big-O 표기 포함 (예: O(N log N), O(H*N*M))
 - answer_code는 실제 줄바꿈을 사용한 여러 줄 코드로 작성 ("\\n" 문자열 금지)
 - inline_suggestions가 1개 이상이면 answer_code에는 그 개선사항이 반드시 반영되어야 함
 - answer_code는 입력 코드와 완전히 동일한 코드를 그대로 복사하면 안 됨
@@ -151,6 +160,8 @@ ${input.changedCodePrompt}
 
     return {
       summaryMarkdown: parsed.summary_markdown.trim(),
+      timeComplexity: parsed.time_complexity.trim(),
+      spaceComplexity: parsed.space_complexity.trim(),
       answerCode: parsed.answer_code.trim(),
       inlineSuggestions: normalizeInline(parsed.inline_suggestions)
     };
