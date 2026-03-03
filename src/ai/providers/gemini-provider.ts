@@ -45,6 +45,9 @@ interface GeminiGenerationConfig {
   maxOutputTokens: number;
   responseMimeType: string;
   responseSchema: Record<string, unknown>;
+  thinkingConfig?: {
+    thinkingBudget: number;
+  };
 }
 
 interface GeminiStreamState {
@@ -469,6 +472,7 @@ export class GeminiProvider implements AiProvider {
   private readonly answerCodeTimeoutMs: number;
   private readonly complexityTimeoutMs: number;
   private readonly useStreaming: boolean;
+  private readonly thinkingBudgetOverride: number | null;
 
   constructor(apiKey: string, model: string) {
     this.apiKey = apiKey;
@@ -485,6 +489,31 @@ export class GeminiProvider implements AiProvider {
     this.answerCodeTimeoutMs = toPositiveInt(process.env.GEMINI_ANSWER_CODE_TIMEOUT_MS, 15000);
     this.complexityTimeoutMs = toPositiveInt(process.env.GEMINI_COMPLEXITY_TIMEOUT_MS, 8000);
     this.useStreaming = (process.env.GEMINI_STREAMING ?? "1").trim() !== "0";
+    this.thinkingBudgetOverride = this.parseThinkingBudget(process.env.GEMINI_THINKING_BUDGET);
+  }
+
+  private parseThinkingBudget(raw: string | undefined): number | null {
+    if (raw == null || raw.trim() === "") return null;
+    const value = Number(raw);
+    if (!Number.isFinite(value)) return null;
+    return Math.max(0, Math.floor(value));
+  }
+
+  private resolveThinkingBudget(model: string): number | null {
+    if (this.thinkingBudgetOverride != null) return this.thinkingBudgetOverride;
+    if (/\b2\.5\b/.test(model)) return 0;
+    return null;
+  }
+
+  private withModelDefaults(model: string, config: GeminiGenerationConfig): GeminiGenerationConfig {
+    const thinkingBudget = this.resolveThinkingBudget(model);
+    if (thinkingBudget == null) {
+      return config;
+    }
+    return {
+      ...config,
+      thinkingConfig: { thinkingBudget }
+    };
   }
 
   private async requestUnary(
@@ -498,6 +527,7 @@ export class GeminiProvider implements AiProvider {
 
     try {
       const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(this.apiKey)}`;
+      const finalConfig = this.withModelDefaults(model, generationConfig);
       const response = await fetch(endpoint, {
         method: "POST",
         headers: {
@@ -509,7 +539,7 @@ export class GeminiProvider implements AiProvider {
               parts: [{ text: prompt }]
             }
           ],
-          generationConfig
+          generationConfig: finalConfig
         }),
         signal: controller.signal
       });
@@ -570,6 +600,7 @@ export class GeminiProvider implements AiProvider {
 
     try {
       const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:streamGenerateContent?alt=sse&key=${encodeURIComponent(this.apiKey)}`;
+      const finalConfig = this.withModelDefaults(model, generationConfig);
       const response = await fetch(endpoint, {
         method: "POST",
         headers: {
@@ -581,7 +612,7 @@ export class GeminiProvider implements AiProvider {
               parts: [{ text: prompt }]
             }
           ],
-          generationConfig
+          generationConfig: finalConfig
         }),
         signal: controller.signal
       });
