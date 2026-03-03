@@ -20,12 +20,19 @@ interface GeminiResponseShape {
 
 interface GeminiApiResponse {
   candidates?: Array<{
+    finishReason?: string;
+    finishMessage?: string;
     content?: {
       parts?: Array<{
         text?: string;
       }>;
     };
   }>;
+  usageMetadata?: {
+    promptTokenCount?: number;
+    candidatesTokenCount?: number;
+    totalTokenCount?: number;
+  };
 }
 
 type GeminiRequestResult =
@@ -38,6 +45,13 @@ interface GeminiGenerationConfig {
   maxOutputTokens: number;
   responseMimeType: string;
   responseSchema: Record<string, unknown>;
+}
+
+interface GeminiStreamState {
+  rawText: string;
+  finishReason?: string;
+  finishMessage?: string;
+  usageMetadata?: GeminiApiResponse["usageMetadata"];
 }
 
 function toPositiveInt(value: string | undefined, fallback: number): number {
@@ -56,6 +70,101 @@ function stripCodeFence(text: string): string {
   const trimmed = text.trim();
   if (!trimmed.startsWith("```")) return trimmed;
   return trimmed.replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/, "").trim();
+}
+
+function decodeJsonStringLike(value: string): string {
+  try {
+    return JSON.parse(`"${value.replace(/\r/g, "\\r").replace(/\n/g, "\\n")}"`) as string;
+  } catch {
+    return value
+      .replace(/\\n/g, "\n")
+      .replace(/\\r/g, "\r")
+      .replace(/\\t/g, "\t")
+      .replace(/\\"/g, '"')
+      .replace(/\\\\/g, "\\");
+  }
+}
+
+function extractJsonStringField(text: string, key: string): string | null {
+  const keyRegex = new RegExp(`"${key}"\\s*:`, "m");
+  const keyMatch = keyRegex.exec(text);
+  if (!keyMatch) return null;
+
+  let index = keyMatch.index + keyMatch[0].length;
+  while (index < text.length && /\s/.test(text[index])) index += 1;
+  if (text[index] !== '"') return null;
+
+  index += 1;
+  let escaped = false;
+  let raw = "";
+  while (index < text.length) {
+    const ch = text[index];
+    if (escaped) {
+      raw += ch;
+      escaped = false;
+      index += 1;
+      continue;
+    }
+    if (ch === "\\") {
+      raw += ch;
+      escaped = true;
+      index += 1;
+      continue;
+    }
+    if (ch === '"') {
+      return decodeJsonStringLike(raw);
+    }
+    raw += ch;
+    index += 1;
+  }
+
+  // 문자열이 닫히지 않은 경우, 파싱 가능한 부분까지만 사용
+  return raw.trim() ? decodeJsonStringLike(raw) : null;
+}
+
+function parseLooseInlineSuggestions(text: string): GeminiResponseShape["inline_suggestions"] {
+  const markerRegex = /"inline_suggestions"\s*:/m;
+  const marker = markerRegex.exec(text);
+  if (!marker) return [];
+
+  let index = marker.index + marker[0].length;
+  while (index < text.length && /\s/.test(text[index])) index += 1;
+  if (text[index] !== "[") return [];
+
+  const slice = text.slice(index);
+  const results: GeminiResponseShape["inline_suggestions"] = [];
+  const objectRegex =
+    /{[\s\S]*?"path"\s*:\s*"([\s\S]*?)"[\s\S]*?"line"\s*:\s*(-?\d+)[\s\S]*?"body"\s*:\s*"([\s\S]*?)"[\s\S]*?}/g;
+
+  for (const match of slice.matchAll(objectRegex)) {
+    const path = decodeJsonStringLike(match[1] ?? "").trim();
+    const line = Number(match[2]);
+    const body = decodeJsonStringLike(match[3] ?? "").trim();
+    if (!path || !body || !Number.isInteger(line) || line <= 0) continue;
+    results.push({ path, line, body });
+    if (results.length >= 8) break;
+  }
+
+  return results;
+}
+
+function parseLooseResponse(text: string): GeminiResponseShape | null {
+  const stripped = stripCodeFence(text);
+  const summary = extractJsonStringField(stripped, "summary_markdown");
+  if (!summary) return null;
+
+  const timeComplexity = extractJsonStringField(stripped, "time_complexity") || "O(unknown)";
+  const spaceComplexity = extractJsonStringField(stripped, "space_complexity") || "O(unknown)";
+  const answerCode = extractJsonStringField(stripped, "answer_code") || "/* answer_code unavailable */";
+  const inlineSuggestions = parseLooseInlineSuggestions(stripped);
+
+  return {
+    summary_markdown: summary.trim(),
+    time_complexity: timeComplexity.trim(),
+    space_complexity: spaceComplexity.trim(),
+    answer_code: answerCode.trim(),
+    inline_suggestions: inlineSuggestions
+  };
 }
 
 function parseResponse(text: string): GeminiResponseShape | null {
@@ -82,10 +191,12 @@ function parseResponse(text: string): GeminiResponseShape | null {
   const firstBrace = stripped.indexOf("{");
   const lastBrace = stripped.lastIndexOf("}");
   if (firstBrace >= 0 && lastBrace > firstBrace) {
-    return tryParse(stripped.slice(firstBrace, lastBrace + 1));
+    const sliced = stripped.slice(firstBrace, lastBrace + 1);
+    const slicedParsed = tryParse(sliced);
+    if (slicedParsed) return slicedParsed;
   }
 
-  return null;
+  return parseLooseResponse(stripped);
 }
 
 function parseAnswerCodeOnly(text: string): string | null {
@@ -128,8 +239,52 @@ function normalizeInline(items: GeminiResponseShape["inline_suggestions"]): Inli
 function extractTextFromGeminiResponse(response: GeminiApiResponse): string | null {
   const candidate = response.candidates?.[0];
   if (!candidate?.content?.parts?.length) return null;
-  const text = candidate.content.parts.map((part) => part.text ?? "").join("").trim();
-  return text || null;
+  const text = candidate.content.parts.map((part) => part.text ?? "").join("");
+  return text.length > 0 ? text : null;
+}
+
+function updateStreamStateFromChunk(state: GeminiStreamState, chunk: GeminiApiResponse): void {
+  const text = extractTextFromGeminiResponse(chunk);
+  if (text) {
+    state.rawText += text;
+  }
+
+  const candidate = chunk.candidates?.[0];
+  if (candidate?.finishReason) {
+    state.finishReason = candidate.finishReason;
+  }
+  if (candidate?.finishMessage) {
+    state.finishMessage = candidate.finishMessage;
+  }
+  if (chunk.usageMetadata) {
+    state.usageMetadata = chunk.usageMetadata;
+  }
+}
+
+function parseSseEventChunk(chunk: string): GeminiApiResponse[] {
+  const normalized = chunk.replace(/\r\n/g, "\n").trim();
+  if (!normalized) return [];
+
+  const events: GeminiApiResponse[] = [];
+  const blocks = normalized.split("\n\n");
+  for (const block of blocks) {
+    const dataLines = block
+      .split("\n")
+      .filter((line) => line.startsWith("data:"))
+      .map((line) => line.slice(5).trimStart());
+    if (dataLines.length === 0) continue;
+
+    const payload = dataLines.join("\n").trim();
+    if (!payload || payload === "[DONE]") continue;
+
+    try {
+      events.push(JSON.parse(payload) as GeminiApiResponse);
+    } catch {
+      // ignore malformed partial event; next chunks may complete stream meaningfully
+    }
+  }
+
+  return events;
 }
 
 function buildPrompt(input: AiReviewInput): string {
@@ -312,6 +467,8 @@ export class GeminiProvider implements AiProvider {
   private readonly rateLimitBackoffMs: number;
   private readonly jsonRepairTimeoutMs: number;
   private readonly answerCodeTimeoutMs: number;
+  private readonly complexityTimeoutMs: number;
+  private readonly useStreaming: boolean;
 
   constructor(apiKey: string, model: string) {
     this.apiKey = apiKey;
@@ -326,13 +483,15 @@ export class GeminiProvider implements AiProvider {
     this.rateLimitBackoffMs = toPositiveInt(process.env.GEMINI_RATE_LIMIT_BACKOFF_MS, 1200);
     this.jsonRepairTimeoutMs = toPositiveInt(process.env.GEMINI_JSON_REPAIR_TIMEOUT_MS, 12000);
     this.answerCodeTimeoutMs = toPositiveInt(process.env.GEMINI_ANSWER_CODE_TIMEOUT_MS, 15000);
+    this.complexityTimeoutMs = toPositiveInt(process.env.GEMINI_COMPLEXITY_TIMEOUT_MS, 8000);
+    this.useStreaming = (process.env.GEMINI_STREAMING ?? "1").trim() !== "0";
   }
 
-  private async request(
+  private async requestUnary(
     model: string,
     prompt: string,
     timeoutMs: number,
-    generationConfig: GeminiGenerationConfig = this.buildGenerationConfig()
+    generationConfig: GeminiGenerationConfig
   ): Promise<GeminiRequestResult> {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), Number.isFinite(timeoutMs) ? timeoutMs : 30000);
@@ -379,7 +538,12 @@ export class GeminiProvider implements AiProvider {
       const json = (await response.json()) as GeminiApiResponse;
       const raw = extractTextFromGeminiResponse(json);
       if (!raw) {
-        console.error("Gemini response was empty", { model });
+        console.error("Gemini response was empty", {
+          model,
+          finishReason: json.candidates?.[0]?.finishReason,
+          finishMessage: json.candidates?.[0]?.finishMessage,
+          usageMetadata: json.usageMetadata
+        });
         return { kind: "failed" };
       }
       return { kind: "ok", raw };
@@ -393,6 +557,140 @@ export class GeminiProvider implements AiProvider {
     } finally {
       clearTimeout(timeout);
     }
+  }
+
+  private async requestStream(
+    model: string,
+    prompt: string,
+    timeoutMs: number,
+    generationConfig: GeminiGenerationConfig
+  ): Promise<GeminiRequestResult> {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), Number.isFinite(timeoutMs) ? timeoutMs : 30000);
+
+    try {
+      const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:streamGenerateContent?alt=sse&key=${encodeURIComponent(this.apiKey)}`;
+      const response = await fetch(endpoint, {
+        method: "POST",
+        headers: {
+          "content-type": "application/json"
+        },
+        body: JSON.stringify({
+          contents: [
+            {
+              parts: [{ text: prompt }]
+            }
+          ],
+          generationConfig
+        }),
+        signal: controller.signal
+      });
+
+      if (!response.ok) {
+        const body = await response.text();
+        if (response.status === 429) {
+          console.error("Gemini stream request rate limited", {
+            model,
+            timeoutMs,
+            status: response.status,
+            body: body.slice(0, 500)
+          });
+          return { kind: "rate_limited" };
+        }
+
+        console.error("Gemini stream request failed", {
+          model,
+          timeoutMs,
+          status: response.status,
+          body: body.slice(0, 500)
+        });
+        return { kind: "failed" };
+      }
+
+      if (!response.body) {
+        console.error("Gemini stream response body was empty", { model, timeoutMs });
+        return { kind: "failed" };
+      }
+
+      const state: GeminiStreamState = { rawText: "" };
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder("utf-8");
+      let sseBuffer = "";
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        sseBuffer += decoder.decode(value, { stream: true });
+
+        let boundaryIndex = sseBuffer.indexOf("\n\n");
+        while (boundaryIndex >= 0) {
+          const eventChunk = sseBuffer.slice(0, boundaryIndex);
+          sseBuffer = sseBuffer.slice(boundaryIndex + 2);
+
+          const events = parseSseEventChunk(eventChunk);
+          for (const event of events) {
+            updateStreamStateFromChunk(state, event);
+          }
+
+          boundaryIndex = sseBuffer.indexOf("\n\n");
+        }
+      }
+
+      sseBuffer += decoder.decode();
+      const tailEvents = parseSseEventChunk(sseBuffer);
+      for (const event of tailEvents) {
+        updateStreamStateFromChunk(state, event);
+      }
+
+      if (!state.rawText.trim()) {
+        console.error("Gemini stream response was empty", {
+          model,
+          timeoutMs,
+          finishReason: state.finishReason,
+          finishMessage: state.finishMessage,
+          usageMetadata: state.usageMetadata
+        });
+        return { kind: "failed" };
+      }
+
+      if (state.finishReason && state.finishReason !== "STOP") {
+        console.warn("Gemini stream finished with non-STOP reason", {
+          model,
+          finishReason: state.finishReason,
+          finishMessage: state.finishMessage,
+          usageMetadata: state.usageMetadata
+        });
+      }
+
+      return { kind: "ok", raw: state.rawText };
+    } catch (error) {
+      console.error("Gemini stream request failed", {
+        model,
+        timeoutMs,
+        message: error instanceof Error ? error.message : String(error)
+      });
+      return { kind: "failed" };
+    } finally {
+      clearTimeout(timeout);
+    }
+  }
+
+  private async request(
+    model: string,
+    prompt: string,
+    timeoutMs: number,
+    generationConfig: GeminiGenerationConfig = this.buildGenerationConfig()
+  ): Promise<GeminiRequestResult> {
+    if (this.useStreaming) {
+      const streamed = await this.requestStream(model, prompt, timeoutMs, generationConfig);
+      if (streamed.kind !== "failed") return streamed;
+
+      console.warn("Gemini stream request failed, falling back to unary request", {
+        model
+      });
+    }
+
+    return this.requestUnary(model, prompt, timeoutMs, generationConfig);
   }
 
   private buildJsonRepairPrompt(raw: string): string {
@@ -471,6 +769,61 @@ ${input.changedCodePrompt}
     };
   }
 
+  private buildComplexitySchema() {
+    return {
+      type: "OBJECT",
+      properties: {
+        time_complexity: { type: "STRING" },
+        space_complexity: { type: "STRING" }
+      },
+      required: ["time_complexity", "space_complexity"]
+    };
+  }
+
+  private buildComplexityPrompt(input: AiReviewInput): string {
+    return `
+코딩 테스트 풀이의 복잡도만 추정하라.
+반드시 JSON 객체 하나만 출력한다. 설명/코드펜스 금지.
+
+응답 스키마:
+{
+  "time_complexity": "O(...)",
+  "space_complexity": "O(...)"
+}
+
+규칙:
+- Big-O 표기 필수
+- 보수적으로 추정
+
+문제 문서:
+${input.problemMarkdown}
+
+변경 코드:
+${input.changedCodePrompt}
+`;
+  }
+
+  private async recoverComplexity(
+    model: string,
+    input: AiReviewInput
+  ): Promise<{ time: string; space: string } | null> {
+    const prompt = limitPrompt(this.buildComplexityPrompt(input), this.maxPromptChars);
+    const result = await this.requestWithRateLimitRetry(model, prompt, this.complexityTimeoutMs, {
+      temperature: 0,
+      maxOutputTokens: 256,
+      responseMimeType: "application/json",
+      responseSchema: this.buildComplexitySchema()
+    });
+    if (result.kind !== "ok") return null;
+
+    const parsed = parseResponse(result.raw);
+    if (!parsed) return null;
+    return {
+      time: parsed.time_complexity.trim() || "O(unknown)",
+      space: parsed.space_complexity.trim() || "O(unknown)"
+    };
+  }
+
   private async recoverAnswerCode(model: string, input: AiReviewInput): Promise<string | null> {
     const prompt = limitPrompt(this.buildAnswerCodeOnlyPrompt(input), this.maxPromptChars);
     const result = await this.requestWithRateLimitRetry(
@@ -489,6 +842,17 @@ ${input.changedCodePrompt}
     parsed: GeminiResponseShape
   ): Promise<AiReviewResult> {
     let answerCode = parsed.answer_code.trim();
+    let timeComplexity = parsed.time_complexity.trim() || "O(unknown)";
+    let spaceComplexity = parsed.space_complexity.trim() || "O(unknown)";
+
+    if (timeComplexity === "O(unknown)" || spaceComplexity === "O(unknown)") {
+      const recoveredComplexity = await this.recoverComplexity(model, input);
+      if (recoveredComplexity) {
+        timeComplexity = recoveredComplexity.time;
+        spaceComplexity = recoveredComplexity.space;
+      }
+    }
+
     if (isUnavailableAnswerCode(answerCode)) {
       const recovered = await this.recoverAnswerCode(model, input);
       if (recovered) {
@@ -498,8 +862,8 @@ ${input.changedCodePrompt}
 
     return {
       summaryMarkdown: parsed.summary_markdown.trim(),
-      timeComplexity: parsed.time_complexity.trim(),
-      spaceComplexity: parsed.space_complexity.trim(),
+      timeComplexity,
+      spaceComplexity,
       answerCode,
       inlineSuggestions: normalizeInline(parsed.inline_suggestions)
     };
@@ -548,7 +912,7 @@ ${input.changedCodePrompt}
         ? { name: this.fallbackModel, timeoutMs: this.fallbackTimeoutMs }
         : null;
 
-    let primaryHadTransportFailure = false;
+    let primaryHadUnusableResponse = false;
     let primaryRateLimited = false;
 
     for (const prompt of prompts) {
@@ -559,7 +923,7 @@ ${input.changedCodePrompt}
       }
 
       if (result.kind === "failed") {
-        primaryHadTransportFailure = true;
+        primaryHadUnusableResponse = true;
         continue;
       }
 
@@ -577,10 +941,11 @@ ${input.changedCodePrompt}
       if (repaired) {
         return this.finalizeResult(primaryModel.name, input, repaired);
       }
+      primaryHadUnusableResponse = true;
     }
 
     if (primaryRateLimited) return null;
-    if (!fallbackModel || !primaryHadTransportFailure) return null;
+    if (!fallbackModel || !primaryHadUnusableResponse) return null;
 
     let fallbackRateLimited = false;
     let fallbackAttempts = 0;
